@@ -1,4 +1,5 @@
 #summary Wiki Main Page
+#labels Featured,Phase-Requirements,Phase-Deploy
 
 = Introduction =
 Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=2629
