@@ -1,0 +1,125 @@
+#summary Wiki Main Page
+
+= Introduction =
+Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=2629
+
+=== Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
+http://imageshack.us/a/img195/852/20130124113258.jpg
+http://imageshack.us/a/img138/7742/20130124105111.jpg
+
+I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
+
+=== Sensor data send to open9x ===
+
+  * absolute altitude ( ID 0x10 and 0x21)
+  * supply voltage as cell 0 in id 0x06
+  * temperature (from MS5611) as T1 ID 0x02
+  * 6 single voltage values connected to the pins as configured as cell 1-6 in id 0x06
+
+WARNING: Do NOT attempt to directly connect these to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the arduino pin limits (keep the smoke in!)
+
+It is all work in progress. It would be fairly easy to add in additional sensors if we stuff in the needed code. you could even try to get a 11DOF module working if you fancy all the data.
+
+== Credits ==
+I got the idea and a lot of code for this project from this thread: http://www.rcgroups.com/forums/showthread.php?t=1749208
+The code to write the frsky packages is based on the work in this thread: http://fpv-community.de/showthread.php?18566-FrSky-Telemetrie-Protokoll
+the voltage calibration code ist from here: http://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
+and thanks to bertrand for the changes to open 9x!
+
+I of course do not take any warranty whatsoever for the instructions below. Do it at your own risk. Read and understand all of the information below before you begin.
+
+== Stuff you will need ==
+
+  * an open 9x based transmitter with audio and frsky telemetry modifications
+  * an arduino nano (builtin USB port +3.3v voltage in case you have a 3.3v Version of the sensor)
+  * or an Arduino Pro Mini (more compact)
+  * a MS5611 Sensor Module (preferable a 5V version) for around 15€-20€ on eBay
+  * a suitable Fr-Sky telemetry enabled receiver with at least one analog signal ( A1 or A2) to transfer the lift/sink rate. If you want to receive the altimeter and supply voltage information as well you need a receiver with the RS232 interface like for example the D8R-II (any version should work)
+  * a standard servo cable
+  * a 2pin 2.54mm header
+  * some heat shrink tube ( is used a 28mm one) or something else to keep the smoke inside
+  * some knowledge of arduino,some cable+coffee[/list]
+
+== Connecting Power ==
+WARNING: make sure you are using only one Power Source for the arduino. If i connect the arduino to the PC, i always disconnect the 5V to the receiver and power the receiver via it´s own battery+BEC.
+
+You can use a standard servo cable to connected the arduino to a free servo port of the frsky receiver.
+-GND and +5V from the servo port. go to the supply voltage pins on the arduino.
+The arduino has to ways to feed it with power: 
+
+  * the RAW or VN  Pin takes  5 - 12 V use this one if you are conecting directly to a battery above 5v
+  * the VCC pin takes regulated 5V use this one if you have a BEC[/list]
+
+
+== Connecting the MS5611 to the arduino ==
+The ms5611 has to be connected to the arduino with the following connections:
+
+  * SCLK to the A5 pin on the arduino
+  * SDA_I to the A4 pin on the arduino
+  * GND to GND on the arduino
+  * VDD to +5V on the arduino (VCC)[/list]
+on an arduino pro mini the A4+A5 pins are normally located on the inner part of the board. Depending on the layout of the MS5611 module, you could just add a small dual  header pin (2.54mm) to mount the board. Then you just need 2 small cables to connect the power.
+
+== Connecting the serial output of the arduino to the FR-Sky receiver ==
+The serial output on pin  <10> of the arduino has to be connected to the RS232 rx pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the arduino
+
+=== Optional: connect analog climb rate signal to A1 or A2 ===
+If you have a receiver with a RS232 interface, you do NOT have to connect this signal.
+If you do not have a receiver with RS232 port, you could try the generation of the climb signal via a small filter. In that case you would need additionally:
+
+  * a 1kOhm resistor
+  * a 22uF Capacitor
+to activate this function in the code you have to uncomment the line by removing the "//" at the beginning of the line
+{{{//#define ANALOG_CLIMB_RATE}}}
+
+== Creating a filter to convert the PWM Output to a DC voltage ==
+As the arduino will output the lift/sink rate as a PWM signal, this signal has to be converted with the following small circuit:
+
+{{{
+ARDUINO               FrSky Receiver
+pin 9 ----- R1 -----+----- A1 or A2
+                    |
+                    C1
+                    |
+gnd      ------------
+}}}
+R1= 1kOhm
+C1= 10..100uF Electrolytic Capacitor  ( i currently use 22uF )
+
+I do not own a scope, so somebody with the right equipment might want to fine tune these values a bit or come up with a better filter[/spoil]
+
+== Programming the Arduino ==
+here is the arduino sketch you have to put on the arduino.
+
+
+== Setting up the sensor data in open9x ==
+On the telemetry setup page, change the following values:
+
+  * Usr Data: Proto to HALCYON (
+frsky works partly, as it ignores the “cm” part of the height. resulting in a very low sensitivity)
+(HALCYON will be available in the next official open9x version  above build r1880)
+  * Vario: Source to DATA <Limit1> <SinkToneStart> <RaiseToneStart> <LimtTop>
+If you youe the analog ClimbRate option, use A1 or A2 and setup the chosen pin to the correct range ( 6m/s  + offset somewhere around -3m/s, adjust it to keep the climbrate around 0 with the vario on the desk)
+  * Limit1 + 2 are the lowest and highest climb rate used for the tone generation
+Sink- and RaiseToneStart are the values below/above  which the vario will create a tone
+Play around with these to receive the best tone
+  * configure your telemetry screens to your liking..
+  * setup a switch to turn on/off the vario tone generation[/list]
+the remaining setup fot the switch + telemetry screen is described in the open9x documentation
+== Some comments about the code ==
+The pressure values from the sensor will be placed in a rotating buffer. Increasing the size of this buffer will reduce noise but also reduce reaction time.
+All pin assignment are configurable.
+If you are using “#define DEBUG”, this interferes with the data read from the MS5611 and the generation of the PWM signal, resulting in unexpected output.
+The 10 seconds an altitude of 0 (actually 1) will be transmitted. iof you turn on your receiver in this time, and change to the telemetry screen, open9x will use this value as it´s starting height, resulting in all further altitudes to be displayed as calculated by the arduino code. You can always press [MENU] in the telemetry screens to set the current altitude to 0.
+
+Have fun,
+
+rainer
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
