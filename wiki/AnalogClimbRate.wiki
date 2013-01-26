@@ -1,5 +1,5 @@
 #Optional Analog Climb Rate for non RS232 Receivers
-
+= optional output of an analog climb rate signal = 
 If you have a receiver with a RS232 interface, you do NOT have to connect this signal.
 If you do not have a receiver with RS232 port, you could try the generation of the climb signal via a small filter. In that case you would need additionally:
 
@@ -22,4 +22,4 @@ gnd      ------------
   * R1= 1kOhm
   * C1= 10..100uF Electrolytic Capacitor  ( i currently use 22uF )
 
-I do not own a scope, so somebody with the right equipment might want to fine tune these values a bit or come up with a better filter[/spoil]
+I do not own a scope, so somebody with the right equipment might want to fine tune these values a bit or come up with a better filter
