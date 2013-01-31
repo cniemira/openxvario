@@ -68,6 +68,8 @@ The serial output on pin  <10> of the arduino has to be connected to the RS232 r
 In case you receiver only has A1/ or A2 for telemetry you can still try to use the analog output mode for the climb rate: AnalogClimbRate
 
 == Programming the Arduino ==
+The code to put on your arduino can be customized in various way. Check the CompileOptions page for details
+
 here is the arduino sketch you have to put on the arduino.
 
 
