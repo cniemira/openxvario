@@ -9,7 +9,7 @@ at the beginning of the code file there are quite a lot of "#define xxxxx" state
 
 == Pin Assignments == 
 some of the pin assignments can be changed here. Not all pins are possible for each function, under normal circumstances do not change these.
-the !PIN_VoltageCell1-6 will define the pins used for reading up to 6 voltages between 0 and 5V. Only if the PINS are defined here, the actual trasmission of the data will take place.
+the PIN_!VoltageCell1-6 will define the pins used for reading up to 6 voltages between 0 and 5V. Only if the PINS are defined here, the actual trasmission of the data will take place.
 {{{
 #define PIN_SerialTX 10       // the pin to transmit the serial data to the frsky telemetry enabled receiver
 // Define a voltagepin if you want to transmit the value to open9x:
@@ -30,7 +30,7 @@ the onboard LED of the Arduino can be used in one of two ways. only one of the 2
 }}}
 == Absolute or relative Altitude display ==
 i personally prefer to start with the abolute altitude being displayed in open9x. But open9x allways takes the first received altitude and uses it as an offset. this results in the starting altitude to be displayed as 0 meters.
-If you define FORCE_ABSOLUTE_ALT, openxvario will overwrite that offset after starting (or reset). This activates the display of the absoplute calculated height in open9x. before you start your plane you can still press [MENU] on the telemetry dipslay screens to use the current altitude as an offset again.
+If you define FORCE_ABSOLUTE_ALT, openxvario will overwrite that offset after starting (or reset). This activates the display of the absoplute calculated height in open9x. before you start your plane you can still press ![MENU] on the telemetry dipslay screens to use the current altitude as an offset again.
 {{{
 // #define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results in an absolute height diplay.
                            // If not defined, open9x will use the first transmitted altitude as an internal offset, which results in an initial height of "0m"
@@ -44,12 +44,12 @@ const int I2CAdd=0x77;                 // The I2C Address of the MS5611 breakout
 The size of the 2 circular buffers can be changed by this constante
 Bigger Values: More stable behaviour, but also a little slower in reaction time
 Smaller Values: Faster reaction to altitude changes, but also more noise.
-The altitude+ClimbRate will normally be transmitted once every 200ms. By changing the LED MOde to LED_BufferBlink, you can visually see every time the circular buffer completed one fill round. ideally it should take as well around 200ms to complete one full circle.
+The altitude and the !ClimbRate will normally be transmitted once every 200ms. By changing the LED Mode to LED_!BufferBlink, you can visually see every time the circular buffer completed one fill round. ideally it should take as well around 200ms to complete one full circle.
 
 {{{
 const int AverageValueCount=15;        // the number of values that will be used to calculate a new verage value
 }}}
-== Analog ClimbRate Mode == 
+== Analog !ClimbRate Mode == 
 see AnalogClimbRate for details
 {{{
 //#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port( Only use if you have to use a receiver missing the serial connection)
