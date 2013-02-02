@@ -9,7 +9,7 @@ at the beginning of the code file there are quite a lot of "#define xxxxx" state
 
 == Pin Assignments == 
 some of the pin assignments can be changed here. Not all pins are possible for each function, under normal circumstances do not change these.
-the PIN_VoltageCell1-6 will define the pins used for reading up to 6 voltages between 0 and 5V. Only if the PINS are defined here, the actual trasmission of the data will take place.
+the !PIN_VoltageCell1-6 will define the pins used for reading up to 6 voltages between 0 and 5V. Only if the PINS are defined here, the actual trasmission of the data will take place.
 {{{
 #define PIN_SerialTX 10       // the pin to transmit the serial data to the frsky telemetry enabled receiver
 // Define a voltagepin if you want to transmit the value to open9x:
