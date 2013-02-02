@@ -11,7 +11,21 @@ http://imageshack.us/a/img138/7742/20130124105111.jpg
 I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
 
 === Sensor data send to open9x ===
+here´s an example how it might look in open9x:
+http://imageshack.us/photo/my-images/593/20130202152825.jpg
+ALT => the relative altitude
+VSpd => the vertical speed
+Dist => 279.22 the absolute height as calculated form air pressure+temp
+Cels => the input voltage of the arduino
+RPM => 1056 mbar = the current air pressure (not the best resolution in this field...)
+T1 => 25C the temperature measured byt the ms5611
 
+the dist and RPM fields are being "misused" a bit here :D
+
+you can configure this to your liking by just uncommenting some lines in the code.
+e.g. you can choose what you want in the dist or RPM field: nothing, Altitude,Air pressure..
+
+the following can be transmitted:
   * absolute altitude ( ID 0x10 and 0x21)
   * supply voltage as cell 0 in id 0x06
   * temperature (from MS5611) as T1 ID 0x02
