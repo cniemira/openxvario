@@ -36,8 +36,8 @@ const int I2CAdd=0x77;                 // The I2C Address of the MS5611 breakout
 const int AverageValueCount=15;        // the number of values that will be used to calculate a new verage value
 
 //#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port( Only use if you have to use a receiver missing the serial connection)
-#define OutputClimbRateMin = -3; 
-#define OutputClimbRateMax = 3;
+#define OutputClimbRateMin -3 
+#define OutputClimbRateMax  3
 #define PIN_AnalogClimbRate 9 // the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 
 #define SEND_Alt        // Send alt in the altitude field
@@ -256,12 +256,9 @@ void loop()
 #ifdef SEND_PressureAsDIST
    SendGPSDist(uint16_t(avgPressure/10));
 #endif
-
-
-
-#ifdef ANALOG_CLIMB_RATE   SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
+#ifdef ANALOG_CLIMB_RATE   
+    SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
 #endif
-
   }
   /*
   // Frame 2 to send every 1000ms (must be this intervall, otherwise the climb rate calculation in open9x will not work 
