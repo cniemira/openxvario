@@ -29,8 +29,9 @@
 // Choose how what the led will be used for (only 1 should be defined):
 #define LED_BufferBlink       // Blink every time the averaging buffer complets one cycle
 //#define LED_ClimbBlink        // Blink when climbRate > 0.15cm
+#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results in an absolute height diplay.
+                              // If not defined, open9x will use the first transmitted altitude as an internal offset, which results in an initial height of "0m"
 
-const int transmitZeroAltSeconds = 10; // The number of seconds after startup to transmit an altitude of 0m (actually 1 ;-) ) 
 const int I2CAdd=0x77;                 // The I2C Address of the MS5611 breakout board ( normally 0x76 or 0x77 configured on the MS5611 module via a solder pin or fixed ...)
 const int AverageValueCount=15;        // the number of values that will be used to calculate a new verage value
 
@@ -39,9 +40,12 @@ const int AverageValueCount=15;        // the number of values that will be used
 #define OutputClimbRateMax = 3;
 #define PIN_AnalogClimbRate 9 // the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 
-
-// for test purposes we can dens the absolute height additionally as RPM ( RMPM 23430 = 234,30m)
-#define SEND_AltAsRPM // Altitude in RPM ;-)
+#define SEND_VERT_SPEED// Send vertical speed (climbrate) as id 0x38
+#define SEND_VREF      // Voltage Reference as cell0
+#define SEND_TEMP_T1   // MS5611 temperature as Temp1
+#define SEND_TEMP_T2   // MS5611 temperature as Temp2
+#define SEND_AltAsRPM  // Altitude in RPM ;-)
+#define SEND_AltAsDIST // Altitude in DIST
 
 
 /*****************************************************************************************************/
@@ -60,7 +64,7 @@ const int AverageValueCount=15;        // the number of values that will be used
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-// #define DEBUG
+//#define DEBUG
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) Pin 11 has to be connected to rx pin of the receiver
 SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
 
@@ -95,23 +99,29 @@ SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
 
 #define FRSKY_USERDATA_CURRENT      0x28
 
+#define FRSKY_USERDATA_VERT_SPEED   0x38 // open9x Vario Mode Only
+
 #define FRSKY_USERDATA_VOLTAGE_B    0x3A
 #define FRSKY_USERDATA_VOLTAGE_A    0x3B
 
-const int calcIntervallMS = 200; // the intervall that has to be passed before a new output will be written ( just to the analog pin!! 
+const int calcIntervallMS = 100; // the intervall that has to be passed before a new output will be written ( just to the analog pin!! 
 
 long pressure,avgPressure,lastPressure;
 long pressureValues[AverageValueCount+1];
 long pressureStart; // airpressure measured in setup() can be used to calculate total climb / relative altitude
 int  temperatureValues[AverageValueCount+1];
-float lastClimbRate;
+//float lastClimbRate;
 
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
-unsigned long lastMillisAna,lastMillisFrame1,lastMillisFrame2,startMillis;
-unsigned long time = 0; 
+unsigned long lastMillisCalc,lastMillisFrame1,lastMillisFrame2;
+unsigned long BufferRoundTrip =0;
+float Temp=0;
+long alt=0;
+//long lastAlt=0;
+long climbRate;
+int avgTemp;
 
-
-
+/********************************************************************************** Setup() */
 void setup()
 {
 #ifdef ANALOG_CLIMB_RATE
@@ -140,87 +150,60 @@ void setup()
 
   // Setup the ms5611 Sensor and read the calibration Data
   setupSensor();
-  startMillis=millis()+ transmitZeroAltSeconds*1000;
-
+ 
   // prefill the air pressure buffer
-  for (int i = 0;i<=AverageValueCount;i++){
-    pressure = getPressure();
+  for (int i = 0;i<AverageValueCount*2;i++){
+    SavePressure(getPressure());
   }
-  pressureStart= getAveragePressure(pressure);
+  pressureStart= getAveragePress();
+  
+#ifdef FORCE_ABSOLUTE_ALT
+  SendAlt(1);  // send initial height
+  SendValue(0x00,int16_t(1)); //>> overwrite alt offset in open 9x in order to start with display of absolute altitude... 
+  mySerial.write(0x5E); // End of Frame 1!
+#endif
 }
 
-
+/********************************************************************************** Loop () */
 void loop()
 {
-  avgPressure=getAveragePressure(getPressure()); // feed the pressure in to the running average calculation
-
-  if( (lastMillisAna + calcIntervallMS) <=millis()) // every calcIntervalMS milliseconds we are ouptputting a new value on the analog output pin
-  {
-    int millisPassed=millis()-lastMillisAna;
-    lastMillisAna=millis();
-    float climbRate;
-    // Calculate the altitude change 
-    climbRate=
-              (
-                float( getAltitude(avgPressure,21) - getAltitude(lastPressure,21) )
-              
-              /  millisPassed 
-              )*1000;
-    climbRate =climbRate;
-    /*Serial.print("HeightDiff:");
-    Serial.print(getAltitude(avgPressure,21) - getAltitude(lastPressure,21),DEC);
-    Serial.print("millisPassed=:");
-    Serial.print(millisPassed);
-
-    Serial.print("ClimbRate:");
-    Serial.print(climbRate);
-
-    Serial.println();
-    */
-#ifdef LED_ClimbBlink 
-  if(climbRate >15) ledOn();else ledOff();
-#endif
-#ifdef ANALOG_CLIMB_RATE
-   SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
-#endif
-    
-    lastPressure=avgPressure;
-    
-  }
+  SavePressure(getPressure()); // Fill the pressure buffer
   
-  // Frame 1 to send every 200ms (must be this intervall, otherwise the climb rate calculation in open9x will not work 
+  // ------------------------------------------------------ Do the math every 100ms
+  if( (lastMillisCalc + calcIntervallMS) <=millis()) 
+  {
+    lastMillisCalc=millis(); 
+        alt=getAverageAltitude();
+    climbRate=GetClimbRate(alt);
+  }
+  // ---------------------------------------------------- Frame 1 to send every 200ms 
   if( (lastMillisFrame1 + 200) <=millis()) 
   {
-    int avgTemp=getAverageTemperature(0);
+    lastMillisFrame1=millis(); 
+    avgTemp=getAverageTemperature(0);
+    avgPressure=getAveragePress(); 
     
 #ifdef DEBUG
-    /*Serial.print("Pressure:");  
-    Serial.print(pressure,DEC);
-    */
-    Serial.print(" AveragePressure:");    
-    Serial.print(avgPressure,DEC);
-    Serial.print("----------------Altitude:");  
-    Serial.print(getAltitude(avgPressure,21),DEC);
-    Serial.print(",Temp:");
-    Serial.print(getAverageTemperature(0),DEC);
-    Serial.print(",VCC:");
+    Serial.print("Pressure:");     Serial.print(pressure,DEC);
+    Serial.print(" AveragePressure:");    Serial.print(avgPressure,DEC);
+    Serial.print(" Altitude:");      Serial.print(alt,DEC);
+    Serial.print(" Temp:");    Serial.print(avgTemp,DEC);
+    Serial.print(" VCC:"); readVccMv();
     Serial.println();
 #endif
 
-    if (millis()<startMillis)
-      SendAlt(0); // the first <n> seconds only 0 (actually 1) will be transmitted. in this way we are able to later read the absolute height
-    else {
-       SendAlt(getAltitude(avgPressure,avgTemp));
-    }
-#ifdef SEND_AltAsRPM 
-      SendRPM(getAltitude(avgPressure,avgTemp));
+    SendAlt(alt);
+#ifdef SEND_AltAsRPM     SendRPM(alt);
 #endif
 
-    SendTemperature1(avgTemp); //internal MS5611 voltage as temperature T1
-    //SendTemperature2(99.9);     //idummy 99.9 as temperature T2
-
-    SendCellVoltage(0,readVccMv()); // internal voltage as cell 0 which is not optimal. somebody will probably have to add another id for this or change the the way the vfas voltage gets displayed 
-    
+#ifdef SEND_TEMP_T1      SendTemperature1(avgTemp); //internal MS5611 voltage as temperature T1
+#endif
+#ifdef SEND_TEMP_T2      SendTemperature2(avgTemp); //internal MS5611 voltage as temperature T1
+#endif
+#ifdef SEND_VERT_SPEED   SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)climbRate); // ClimbRate in open9x Vario mode
+#endif
+#ifdef SEND_VREF         SendCellVoltage(0,readVccMv()); // internal voltage as cell 0 which is not optimal. somebody will probably have to add another id for this or change the the way the vfas voltage gets displayed 
+#endif   
 #ifdef PIN_VoltageCell1 SendCellVoltage(1,ReadVoltage(PIN_VoltageCell1));
 #endif
 #ifdef PIN_VoltageCell2 SendCellVoltage(2,ReadVoltage(PIN_VoltageCell2));
@@ -232,9 +215,18 @@ void loop()
 #ifdef PIN_VoltageCell5 SendCellVoltage(5,ReadVoltage(PIN_VoltageCell5));
 #endif
     // SendCurrent(133.5);    // example to send a current. 
-    
+#ifdef SEND_AltAsDIST
+     if (alt <= 32768) SendGPSDist(uint16_t(alt));
+     else if (alt < 327680) SendGPSDist(uint16_t(alt/(long)10));
+       else SendGPSDist(uint16_t(alt/(long)100));// If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
+       #endif 
     mySerial.write(0x5E); // End of Frame 1!
-    lastMillisFrame1=millis(); 
+    #ifdef LED_ClimbBlink 
+  if(climbRate >15) ledOn();else ledOff();
+#endif
+#ifdef ANALOG_CLIMB_RATE   SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
+#endif
+
   }
   /*
   // Frame 2 to send every 1000ms (must be this intervall, otherwise the climb rate calculation in open9x will not work 
@@ -250,6 +242,9 @@ void loop()
 }
 
 #ifdef ANALOG_CLIMB_RATE
+/**********************************************************/
+/* SendAnalogClimbRate => output a voltage for vert.speed */
+/**********************************************************/
 void SendAnalogClimbRate(long cr)
 {
   int outValue;
@@ -259,45 +254,64 @@ void SendAnalogClimbRate(long cr)
   analogWrite(PIN_AnalogClimbRate,(int)outValue);
 }
 #endif
+/*********************************************************/
+/* GetClimbRate => calculate the current climbRate       */
+/* has to be invoked every 100ms for a queue length of 10 */
+/*********************************************************/
+long GetClimbRate(long alti){
+  static long climbRateQueue[10];
+  static long lastAlti=alti;
+  static byte cnt=0;
+  climbRate -= climbRateQueue[cnt];  // overwrite the oldest value in the queue
+  climbRateQueue[cnt]=alti-lastAlti; // store the current height difference
 
+  cnt+=1;
+  if (cnt ==10)cnt=0;
+  
+  climbRate += alti-lastAlti; // add the current height difference
+  lastAlti=alti;
+  return(climbRate);
+}
+   
+  
 void SendValue(uint8_t ID, uint16_t Value) {
   uint8_t tmp1 = Value & 0x00ff;
   uint8_t tmp2 = (Value & 0xff00)>>8;
   mySerial.write(0x5E);
   mySerial.write(ID);
   if(tmp1 == 0x5E) {
-    mySerial.write(0x5D);
-    mySerial.write(0x3E);
+    mySerial.write(0x5D);    mySerial.write(0x3E);
   } 
   else if(tmp1 == 0x5D) {
-    mySerial.write(0x5D);
-    mySerial.write(0x3D);
+    mySerial.write(0x5D);    mySerial.write(0x3D);
   } 
   else {
     mySerial.write(tmp1);
   }
   if(tmp2 == 0x5E) {
-    mySerial.write(0x5D);
-    mySerial.write(0x3E);
+    mySerial.write(0x5D);    mySerial.write(0x3E);
   } 
   else if(tmp2 == 0x5D) {
-    mySerial.write(0x5D);
-    mySerial.write(0x3D);
+    mySerial.write(0x5D);    mySerial.write(0x3D);
   } 
   else {
     mySerial.write(tmp2);
   }
   // mySerial.write(0x5E);
 }
+/**********************************************************/
+/* ReadVoltage => read the voltage of an analog input pin */
+/**********************************************************/
 uint16_t ReadVoltage(int pin)
 {
     // Convert the analog reading (which goes from 0 - 1023) to a millivolt value
-   return uint16_t(
-//   (float) analogRead(pin) * (5.0 / 1023.0) *1000
-    (float) analogRead(pin) * (float)(readVccMv() /1023.0)
-     );
-
+   return uint16_t(    (float) analogRead(pin) * (float)(readVccMv() /1023.0)     );
 }
+
+/**********************************************************/
+/* SendCellVoltage => send a cell voltage                 */
+/**********************************************************/
+
 void SendCellVoltage(uint8_t cellID, uint16_t voltage) {
   voltage /= 2;
   uint8_t v1 = (voltage & 0x0f00)>>8 | (cellID<<4 & 0xf0);
@@ -305,31 +319,46 @@ void SendCellVoltage(uint8_t cellID, uint16_t voltage) {
   uint16_t Value = (v1 & 0x00ff) | (v2<<8);
   SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
 }
-
+/**********************************/
+/* SendGPSDist => send 0..32768   */
+/**********************************/
+void SendGPSDist(uint16_t dist) {// ==> Field "Dist" in open9x
+ //dist=constrain(dist,0,65535);
+ SendValue(0x3C,uint16_t(dist)); //>> DIST
+}
 void SendTemperature1(int16_t tempc) {
    SendValue(FRSKY_USERDATA_TEMP1, tempc/10);
 }
 void SendTemperature2(int16_t tempc) {
    SendValue(FRSKY_USERDATA_TEMP2, tempc/10);
 }
+/*************************************/
+/* SendRPM => Send Rounds Per Minute */
+/*************************************/
 void SendRPM(uint16_t rpm) {
   byte blades=2;
-  /*Serial.print(" RPM:");  
-  Serial.print(rpm);*/
   rpm = uint16_t((float)rpm/(60/blades));  
   SendValue(FRSKY_USERDATA_RPM, rpm);
 }
+/*************************************/
+/* SendCurrent => Send Current       */
+/*************************************/
 
 void SendCurrent(float amp) {
   SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(amp*10));
 }
-
+/**********************************/
+/* SendAlt => Send ALtitude in cm */
+/**********************************/
 void SendAlt(long altcm)
 {
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
-  altcm+=100;
+
   uint16_t Centimeter =  uint16_t(altcm%100);
-  int16_t Meter = int16_t((altcm-Centimeter)/100);
+  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
+#ifdef FORCE_ABSOLUTE_ALT
+  Meter-=1; // To compensate for a Offset of 1 at the beginning
+#endif
 #ifdef DEBUG
   Serial.print("Meter:");
   Serial.print(Meter);
@@ -360,36 +389,57 @@ void SendGPSAlt(long altcm)
   SendValue(FRSKY_USERDATA_GPS_ALT_A, Centimeter);
 }
 
-/* getAltitude .- convert mbar and temperature into an altitude value */
+/****************************************************************/
+/* getAltitude - convert mbar and temperature into an altitude  */
+/*               value                                          */
+/****************************************************************/
 long getAltitude(long press, int temp) {
   float   result;
+  temp/=10;
   result=(float)press/100;
   const float sea_press = 1013.25;
-  return long(((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100);
+  return long(((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
 }
 
+/****************************************************************/
+/* SavePressure - save a new pressure value to the buffer       */
+/*                                                              */
+/****************************************************************/
 /* Rotating Buffer for calculating the Average Pressure */
-float getAveragePressure(long currentPressure )
-{
+void SavePressure(long currentPressure){
+  static unsigned long lastpmillis=0;
   static int cnt =0;
+  pressureValues[cnt++]=currentPressure;
+  if(cnt>AverageValueCount){
+      cnt=0;
+      BufferRoundTrip=millis()-lastpmillis;
+      lastpmillis=millis();
+      ledOn();
+  }else if(cnt==1)ledOff(); //TODO: ifdef einbauen
+}
+/****************************************************************/
+/* getAveragePress - calculate average pressure based on all    */
+/* entries in the pressure buffer                               */
+/****************************************************************/
+long getAveragePress()
+{
+  long result=0;
+  for (int i=0;i<=AverageValueCount;i++) result +=pressureValues[i];
+  return result/AverageValueCount;
+}
+
+/****************************************************************/
+/* getAverageAltitude - calculate average altitude based on all */
+/* entries in the pressure buffer                               */
+/* Additionally the average climb Rate will be calculated.      */
+/****************************************************************/
+float getAverageAltitude()
+{
+  
   float result=0;
-  if(currentPressure != 0 ) 
-  {
-    pressureValues[cnt]=currentPressure;
-    cnt+=1;
-    if(cnt==AverageValueCount)
-    {
-        cnt=0;
-#ifdef LED_BufferBlink 
-        ledOn();
-#endif
-    }
-#ifdef LED_BufferBlink
-     if( cnt==1)ledOff();
-#endif
-  }
-     
-  for (int i=0;i<AverageValueCount;i++) result +=pressureValues[i];
+   for (int i=0;i<AverageValueCount;i++){
+     result +=getAltitude(pressureValues[i],Temp);
+   }
   return result/AverageValueCount;
 }
 
