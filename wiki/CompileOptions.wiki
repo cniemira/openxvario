@@ -3,7 +3,7 @@
 = Introduction =
 
 The code of openxvario can be customized to suit your projects needs.
-
+at the beginning of the code file there are quite a lot of "#define xxxxx" statements. if the line starts with "#define" that option is active. if the line starts with "// #define" that option is currently deactivated. Prior to compiling / uploading the programm to the arduino board, you can change these defines in order to adjust the programm to your whishes.
 
 = Details =
 
@@ -58,12 +58,16 @@ see AnalogClimbRate for details
 #define PIN_AnalogClimbRate 9 // the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 }}}
 == absolute Altitude / air pressure in additional Fields == 
-we can (ab)use some of the other telemetry fields to display some more data in the telemetry fields...
+All transmitted data can be activate/deactivated. choose via the following deines which data you want to transmitt to which field:
 {{{
-// for test purposes we can send the absolute height additionally as RPM ( RMPM 23430 = 234,30m)
-//#define SEND_AltAsRPM // Altitude in RPM ;-) (resolution 30cm)
-
-// for test purposes we can send the absolute height to the DIST field resolution: 0-327.68m=1cm/>327,68..3276,8m=10cm/>3276,8=1m)
-// #define SEND_AltAsDIST // Altitude in DIST
-// #define SEND_PressureAsDist // Pressure as DIST
+#define SEND_Alt        // Send alt in the altitude field
+#define SEND_VERT_SPEED // Send vertical speed (climbrate) as id 0x38
+#define SEND_VREF       // Voltage Reference as cell0
+#define SEND_VFAS_NEW   // Voltage as VFAS untested! supposed to work in the next release of open9x
+#define SEND_TEMP_T1    // MS5611 temperature as Temp1
+//#define SEND_TEMP_T2    // MS5611 temperature as Temp2
+//#define SEND_AltAsRPM   // Altitude in RPM ;-)
+#define SEND_AltAsDIST  // Altitude in DIST
+//#define SEND_PressureAsDIST // pressure in DIST field
+#define SEND_PressureAsRPM  // pressure in RPM Field
 }}}
