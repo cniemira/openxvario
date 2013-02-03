@@ -5,8 +5,8 @@
 Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=2629
 
 === Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
-https://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
-https://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
+http://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
+http://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
 
 watch out: in the picture the rs232 cable ist connected to pin 10, in the current version i changed this to pin 9
 
@@ -94,28 +94,30 @@ The code to put on your arduino can be customized in various way. Check the Comp
 here is the arduino sketch you have to put on the arduino: https://openxvario.googlecode.com/svn/branches/openxvario/openxvario.ino
 
 SparkFUn has a nice tutorial in which they describe the programming of the arduino pro mini: http://www.sparkfun.com/tutorials/244 just use the .INO file you can download on this page.
-As a programmer i recommend the "FTDI basic" type of programmers which is available on ebay. ig got one that has male headers directly on the programmer, so you can place the arduino directly on those headers.
+As a programmer i recommend the "FTDI basic" type of programmers which is available on ebay. I got one that has male headers directly on the programmer, so you can place the arduino directly on those headers. 
+http://openxvario.googlecode.com/svn/wiki/images/programming.jpg
+
+If your´s hasn´t got those male headers, just plug some header pins into the female headers of the porogrammer and the other end directly into the arduino pro mini.
 
 
 == Setting up the sensor data in open9x ==
 On the telemetry setup page, change the following values:
 
-  * Usr Data: Proto to HALCYON (
-frsky works partly, as it ignores the “cm” part of the height. resulting in a very low sensitivity)
-(HALCYON will be available in the next official open9x version  above build r1880)
-  * Vario: Source to DATA <Limit1> <SinkToneStart> <RaiseToneStart> <LimtTop>
-If you youe the analog ClimbRate option, use A1 or A2 and setup the chosen pin to the correct range ( 6m/s  + offset somewhere around -3m/s, adjust it to keep the climbrate around 0 with the vario on the desk)
-  * Limit1 + 2 are the lowest and highest climb rate used for the tone generation
-Sink- and RaiseToneStart are the values below/above  which the vario will create a tone
+  * Usr Data: Proto to HUB
+  * Vario: Source to VARIO 
+  * DATA _!LowerLimit_ _!SinkToneStart_ _!ClimbToneStart_ _!UpperLimit_
+If you use the analog !ClimbRate option, use A1 or A2 and setup the chosen pin to the correct range ( 6m/s  + offset somewhere around -3m/s, adjust it to keep the climbrate around 0 with the vario on the desk)
+  * !LowerLimit and !UpperLimit are the lowest and highest climb rate used for the tone generation
+  * Sink- and !ClimbToneStart are the values below/above  which the vario will create a tone.
 Play around with these to receive the best tone
   * configure your telemetry screens to your liking..
-  * setup a switch to turn on/off the vario tone generation[/list]
+  * setup a switch to turn on/off the vario tone generation
 the remaining setup fot the switch + telemetry screen is described in the open9x documentation
 == Some comments about the code ==
 The pressure values from the sensor will be placed in a rotating buffer. Increasing the size of this buffer will reduce noise but also reduce reaction time.
 All pin assignment are configurable.
 If you are using “#define DEBUG”, this interferes with the data read from the MS5611 and the generation of the PWM signal, resulting in unexpected output.
-The 10 seconds an altitude of 0 (actually 1) will be transmitted. iof you turn on your receiver in this time, and change to the telemetry screen, open9x will use this value as it´s starting height, resulting in all further altitudes to be displayed as calculated by the arduino code. You can always press [MENU] in the telemetry screens to set the current altitude to 0.
+
 
 Have fun,
 
