@@ -68,7 +68,7 @@ The arduino has to ways to feed it with power:
   * the RAW or VIN  Pin takes  5 - 12 V use this one if you are conecting directly to a battery above 5v
   * the VCC pin takes regulated 5V use this one if you have a BEC
 
-The serial output on pin  <9> of the arduino has to be connected to the RS232 rx pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the arduino
+The serial output on pin 9 of the arduino has to be connected to the RS232 RX pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the arduino
 
 http://openxvario.googlecode.com/svn/wiki/images/step1.jpg
 http://openxvario.googlecode.com/svn/wiki/images/step2.jpg
