@@ -57,7 +57,7 @@ const int AverageValueCount=15;        // the number of values that will be used
 == Analog !ClimbRate Mode == 
 see AnalogClimbRate for details
 {{{
-//#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port( Only use if you have to use a receiver missing the serial connection)
+//#define ANALOG_CLIMB_RATE   // If defined, the climb rate will be written as PWM Signal to the defined port( Only use if you have to use a receiver missing the serial connection)
 #define OutputClimbRateMin = -3; 
 #define OutputClimbRateMax = 3;
 #define PIN_AnalogClimbRate 9 // the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
