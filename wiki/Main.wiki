@@ -86,6 +86,9 @@ The code to put on your arduino can be customized in various way. Check the Comp
 
 here is the arduino sketch you have to put on the arduino.
 
+SparkFUn has a nice tutorial in which they describe the programming of the arduino pro mini: http://www.sparkfun.com/tutorials/244 just use the .INO file you can download on this page.
+As a programmer i recommend the "FTDI basic" type of programmers which is available on ebay. ig got one that has male headers directly on the programmer, so you can place the arduino directly on those headers.
+
 
 == Setting up the sensor data in open9x ==
 On the telemetry setup page, change the following values:
