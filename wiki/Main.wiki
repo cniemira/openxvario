@@ -8,6 +8,7 @@ Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=26
 https://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
 https://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
 
+watch out: in the picture the rs232 cable ist connected to pin 10, in the current version i changed this to pin 9
 
 
 I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
@@ -65,7 +66,7 @@ You can use a standard servo cable to connected the arduino to a free servo port
 The arduino has to ways to feed it with power: 
 
   * the RAW or VN  Pin takes  5 - 12 V use this one if you are conecting directly to a battery above 5v
-  * the VCC pin takes regulated 5V use this one if you have a BEC[/list]
+  * the VCC pin takes regulated 5V use this one if you have a BEC
 
 
 == Connecting the MS5611 to the arduino ==
@@ -78,7 +79,7 @@ The ms5611 has to be connected to the arduino with the following connections:
 on an arduino pro mini the A4+A5 pins are normally located on the inner part of the board. Depending on the layout of the MS5611 module, you could just add a small dual  header pin (2.54mm) to mount the board. Then you just need 2 small cables to connect the power.
 
 == Connecting the serial output of the arduino to the FR-Sky receiver ==
-The serial output on pin  <10> of the arduino has to be connected to the RS232 rx pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the arduino
+The serial output on pin  <9> of the arduino has to be connected to the RS232 rx pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the arduino
 
 === Optional: connect analog climb rate signal to A1 or A2 ===
 In case you receiver only has A1/ or A2 for telemetry you can still try to use the analog output mode for the climb rate: AnalogClimbRate
