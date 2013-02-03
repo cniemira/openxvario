@@ -5,8 +5,10 @@
 Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=2629
 
 === Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
-http://imageshack.us/a/img195/852/20130124113258.jpg
-http://imageshack.us/a/img138/7742/20130124105111.jpg
+https://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
+https://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
+
+
 
 I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
 
