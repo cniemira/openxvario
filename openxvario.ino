@@ -15,7 +15,7 @@
 
 // a little warning: if the Serial Lib will be used to generate debugging output, this will create interference with the pwm output if the ANALOG_CLIMB_RATE is being used
  
-#define PIN_SerialTX 10       // the pin to transmit the serial data to the frsky telemetry enabled receiver
+#define PIN_SerialTX 9        // the pin to transmit the serial data to the frsky telemetry enabled receiver
 #define PIN_ClimbLed 13       // the led used to indicate lift for debugging purposes
 
 // Define a voltagepin if you want to transmit the value to open9x:
