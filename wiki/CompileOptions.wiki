@@ -41,9 +41,14 @@ the normal I2C addresses are 0x76 or 0x77 depending on the used modul.
 const int I2CAdd=0x77;                 // The I2C Address of the MS5611 breakout board ( normally 0x76 or 0x77 configured on the MS5611 module via a solder pin or fixed ...)
 }}}
 == Size of the circular buffer ==
-The size of the 2 circular buffers can be changed by this constante
+The size of the circular buffers can be changed by this constant.
 Bigger Values: More stable behaviour, but also a little slower in reaction time
 Smaller Values: Faster reaction to altitude changes, but also more noise.
+
+  * 12 is very fast reacting but with more jitter; 
+  * 25 is a little slow, but quite stable; 
+  * 100 is dead slow, but you could almost use it for height measurements in cm ;-)
+
 The altitude and the !ClimbRate will normally be transmitted once every 200ms. By changing the LED Mode to LED_!BufferBlink, you can visually see every time the circular buffer completed one fill round. ideally it should take as well around 200ms to complete one full circle.
 
 {{{
