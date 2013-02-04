@@ -104,12 +104,20 @@ If your´s hasn´t got those male headers, just plug some header pins into the f
 On the telemetry setup page, change the following values:
 
   * Usr Data: Proto to HUB
-  * Vario: Source to VARIO 
-  * DATA _!LowerLimit_ _!SinkToneStart_ _!ClimbToneStart_ _!UpperLimit_
 If you use the analog !ClimbRate option, use A1 or A2 and setup the chosen pin to the correct range ( 6m/s  + offset somewhere around -3m/s, adjust it to keep the climbrate around 0 with the vario on the desk)
-  * !LowerLimit and !UpperLimit are the lowest and highest climb rate used for the tone generation
-  * Sink- and !ClimbToneStart are the values below/above  which the vario will create a tone.
+
+  * Vario: Source to VARIO 
+  * Limit *lower_range_limit,sink_tone_start,rise_tone_start,upper_tone_limit*
+
+==> The lower and upper limit will be used to define the range for the tone generation 
+The range is -10..-3 for the lower and +3..+10 for the upper limit in 1m/s steps . Theses 2 values define the possible range of vertical speeds that will be mapped to different audio results. if you want to have a sensitive audible feedback, you might want to set these to outer limit e.g. to -3 and +3. this will result in all the possible audio pitch and beep speeds to be used for vertical speeds of -3 tp +3 m/s
+
+==> The inner limits
+The range her is -2..0 and 0..+2m/s in 0.1m/s steps
+The inner values will be used to define a silent area for the vario tone. you can set these for example to -1 to +0.20 . This will tell the vario to be quiet in all vertical speeds between sinking -1m/s to lift of 0.20m/s .
+
 Play around with these to receive the best tone
+
   * configure your telemetry screens to your liking..
   * setup a switch to turn on/off the vario tone generation
 the remaining setup fot the switch + telemetry screen is described in the open9x documentation
@@ -123,10 +131,3 @@ Have fun,
 
 rainer
 
-
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
