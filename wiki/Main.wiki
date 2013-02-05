@@ -82,7 +82,7 @@ The ms5611 has to be connected to the arduino with the following connections:
   * SCLK to the A5 pin on the arduino
   * SDA_I to the A4 pin on the arduino
   * GND to GND on the arduino
-  * VDD to +5V on the arduino (VCC)[/list]
+  * VDD to +5V on the arduino (VCC)
 on an arduino pro mini the A4+A5 pins are normally located on the inner part of the board. Depending on the layout of the MS5611 module, you could just add a small dual  header pin (2.54mm) to mount the board. Then you just need 2 small cables to connect the power.
 
 === Optional: connect analog climb rate signal to A1 or A2 ===
@@ -130,4 +130,3 @@ If you are using “#define DEBUG”, this interferes with the data read from th
 Have fun,
 
 rainer
-
