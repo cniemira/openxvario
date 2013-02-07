@@ -1,5 +1,10 @@
-#Optional Analog Climb Rate for non RS232 Receivers
+
 = optional output of an analog climb rate signal = 
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
+
+here is an example of an optional Filter that can be connected to the openXvario when needed. the capacitor + resistor are shrink wrapped and can be connected via a 2pin header to the openXvario.
+On the openXvario there is a 2pin female header  to connect this filter.
+
 If you have a receiver with a RS232 interface, you do NOT have to connect this signal.
 If you do not have a receiver with RS232 port, you could try the generation of the climb signal via a small filter. In that case you would need additionally:
 
