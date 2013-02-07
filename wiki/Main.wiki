@@ -8,7 +8,7 @@ Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=26
 http://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
 http://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
 
-watch out: in the picture the rs232 cable is connected to pin 10, in the current version i changed this to pin 9
+watch out: in the picture the rs232 cable is connected to pin 10, in the current version i changed this to pin 2
 
 
 I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
