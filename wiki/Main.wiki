@@ -2,7 +2,7 @@
 #labels Featured,Phase-Requirements,Phase-Deploy
 
 = Introduction =
-Discussion about this project: http://9xforums.com/forum/viewtopic.php?f=49&t=2629
+Discussion about this project: http://9xforums.com/forum/viewforum.php?f=86
 
 === Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
 http://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
