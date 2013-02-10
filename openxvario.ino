@@ -1,22 +1,18 @@
 // openxvario http://code.google.com/p/openxvario/
 // started by R.Schloßhan 
 
-//
-// if ANALOG_CLIMB_RATE has been defined you can connect Arduino Pin 9 to a 1kohm resistor. the other end of that resistor will be connected to to A1 or A2 of FrSky Receiver ( e.g. D8R-II ) and to a a 22uF electrolyte Capacitor ( whichs other end goes to ground) 
-// This will filter the PWM Output  to a usable voltage for the open9x Vario code.
-//
-// GND and +5V from a free Servo Port of the FrSky receiver goes to the Arduino. ( Voltage will be measured and transfered to open9x )
+// GND and +5V from a free Servo Port of the FrSky receiver goes to the Arduino. 
+// (Voltage will be measured and transfered to open9x)
 
 // The MS5611 has to be connected this way:
 // MS5611 SCLK => A5
 // MS5611 SDA_I => A4
-// MS5611 VCC => +5V ( depending on the MS5611 Module  you use, you might have to use 3.3V instead or add in a resistor or voltage regulator)
+// MS5611 VCC => +5V (depending on the MS5611 Module  you use, you might have to use 3.3V 
+//                    instead or add in a resistor or voltage regulator)
 // MS5611 GnD => GND
-
-// a little warning: if the Serial Lib will be used to generate debugging output, this will create interference with the pwm output if the ANALOG_CLIMB_RATE is being used
  
-#define PIN_SerialTX 9        // the pin to transmit the serial data to the frsky telemetry enabled receiver
-#define PIN_ClimbLed 13       // the led used to indicate lift for debugging purposes
+#define PIN_SerialTX 2        // 2  the pin to transmit the serial data to the frsky telemetry enabled receiver
+#define PIN_ClimbLed 13       // 13 the led used to indicate lift ( led lights up above +0.10m/s)
 
 // Define a voltagepin if you want to transmit the value to open9x:
 //#define PIN_VoltageCell1 0    //  Pin for measuring Voltage of cell 1 ( Analog In Pin! )
@@ -26,24 +22,23 @@
 //#define PIN_VoltageCell5 6    //  Pin for measuring Voltage of cell 5 ( Analog In Pin! )
 //#define PIN_VoltageCell6 7    //  Pin for measuring Voltage of cell 6 ( Analog In Pin! )
 
-// Choose how what the led will be used for (only 1 should be defined):
-//#define LED_BufferBlink       // Blink every time the averaging buffer complets one cycle
-#define LED_ClimbBlink        // Blink when climbRate > 0.15cm
-#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results in an absolute height diplay.
-                              // If not defined, open9x will use the first transmitted altitude as an internal offset, which results in an initial height of "0m"
+// Choose if the led should be used for indicationg lift.
+#define LED_ClimbBlink     // Blink when climbRate > 0.10cm
 
-const int I2CAdd=0x77;                 // The I2C Address of the MS5611 breakout board ( normally 0x76 or 0x77 configured on the MS5611 module via a solder pin or fixed ...)
-const int AverageValueCount=15;        // the number of values that will be used to calculate a new verage value
+#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
+                           // in an absolute height diplay. (that you can still set to 0 by pressing [MENU] in the telem.screens
+                           // If not defined, open9x will use the first transmitted altitude as an internal offset, 
+                           // which results in an initial height of 0m
 
-//#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port( Only use if you have to use a receiver missing the serial connection)
-#define OutputClimbRateMin -3 
-#define OutputClimbRateMax  3
-#define PIN_AnalogClimbRate 9 // the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
+const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board ( normally 0x76 or 0x77 configured on the MS5611
+                           // module via a solder pin or fixed ...)
 
+//************************** Which data to send in which field *****************************/
+// uncomment to as you like, but only one value per target field!
 #define SEND_Alt        // Send alt in the altitude field
 #define SEND_VERT_SPEED // Send vertical speed (climbrate) as id 0x38
 #define SEND_VREF       // Voltage Reference as cell0
-#define SEND_VFAS_NEW   // Voltage as VFAS untested! supposed to work in the next release of open9x
+#define SEND_VFAS_NEW   // Voltage as VFAS 
 #define SEND_TEMP_T1    // MS5611 temperature as Temp1
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
 //#define SEND_AltAsRPM   // Altitude in RPM ;-)
@@ -51,6 +46,37 @@ const int AverageValueCount=15;        // the number of values that will be used
 //#define SEND_PressureAsDIST // pressure in DIST field
 #define SEND_PressureAsRPM  // pressure in RPM Field
 
+//************************** Data Filtering => kalman Filter Parameters *********************/
+// The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can be adjusted by 
+// changing the value Q (process Noise) and R (Sensor Noise) best pactise is to just change R, as both
+// parametrers influence each other. (less Q requires more R to compensate and vica versa)
+#define KALMAN_Q 0.05 // 0.05 do not tamper unless you are looking for adventure ;-)
+#define KALMAN_R 200// 100=fast but more error  (good for sensor testing...but lots quite some noise)
+                    // 200=medium speed and less false indicationa (nice medium setting with 
+                    //     a silence window (indoor)of at least -0.2 to +0.2)
+                    // 400=conservative setting ;-)
+                    // 1000=still useable maybe for a slow flyer?
+                    // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
+                    //      the height of your furniture with this setting. but do not use it for flying ;-)
+                    // .. everything inbetween in relation to this.
+//#define KALMANPOTI  //if this is defined, 2x 4,7k potentiometer can be attached to A2 and A3 to directly 
+                    // adjust the following values:
+                    // q = process noise (send to transmitter as T2 (q multiplied by 1000)
+                    // r = sensor noise (send to transmitter as DIST)
+//#define KALMANDUMP  // for filter process visualization. Output the measured and esitmated pressure 
+                    // via RS232. then this data can be visualized e.g. using processing.
+                    // you probably do not need to define this
+                    
+//************************** Analog Output of vertical speed (to A1 or A2 on receiver *********************/
+// Do NOT use this if you have an RS232 Port on your receiver. (that one produces better results!)
+// if ANALOG_CLIMB_RATE has been defined you can connect Arduino Pin 3 to a 1kohm resistor. 
+// the other end of that resistor will be connected to to A1 or A2 of FrSky Receiver ( e.g. D8R-II ) 
+// and to a a 22uF electrolyte Capacitor (whichs other end goes to ground) 
+// This will filter the PWM Output to a usable voltage for the open9x Vario code.
+//#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port
+#define OutputClimbRateMin -3 // -3this values eqaly 0V voltage to the receiver
+#define OutputClimbRateMax  3 // 3 this values eqaly 3.2V voltage to the receiver
+#define PIN_AnalogClimbRate 3 // 3 the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 
 /*****************************************************************************************************/
 //                No changes below this line unless you know what you are doing                       /
@@ -68,8 +94,11 @@ const int AverageValueCount=15;        // the number of values that will be used
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-//#define DEBUG
-// Software Serial is used including the Inverted Signal option ( the "true" in the line below ) Pin 11 has to be connected to rx pin of the receiver
+// #define DEBUG
+
+// Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
+// Pin PIN_SerialTX has to be connected to rx pin of the receiver
+// we do not need the RX so we set it to 0
 SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
 
 #define FRSKY_USERDATA_GPS_ALT_B    0x01
@@ -103,14 +132,15 @@ SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
 
 #define FRSKY_USERDATA_CURRENT      0x28
 
-#define FRSKY_USERDATA_VERT_SPEED   0x38 // open9x Vario Mode Only
+#define FRSKY_USERDATA_VERT_SPEED   0x30 // open9x Vario Mode Only
 #define FRSKY_USERDATA_VFAS_NEW     0x39 // open9x Vario Mode Only
 
 #define FRSKY_USERDATA_VOLTAGE_B    0x3A
 #define FRSKY_USERDATA_VOLTAGE_A    0x3B
 
-const int calcIntervallMS = 100; // the intervall for the calculation intervall (do not change!)
-
+const int AverageValueCount=6; // the number of values that will be used to calculate a new verage pressure
+const int calcIntervallMS = 25; // the intervall for the calculation intervall (do not change!)
+                                // the GetClimbRate() requires this to be a fixed value of 50ms currently
 long avgPressure;
 
 long pressureValues[AverageValueCount+1];
@@ -118,11 +148,13 @@ long pressureStart; // airpressure measured in setup() can be used to calculate 
 
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
 unsigned long lastMillisCalc,lastMillisFrame1,lastMillisFrame2;
-unsigned long BufferRoundTrip =0;
 int Temp=0;
-long alt=0;
-long climbRate;
+float alt=0,rawalt=0;
+long climbRate=0;
+int abweichung=0;
 
+double kalman_q= KALMAN_Q; //process noise covariance
+double kalman_r= KALMAN_R; //measurement noise covariance
 
 /********************************************************************************** Setup() */
 void setup()
@@ -150,8 +182,12 @@ void setup()
 #endif
   
   Wire.begin();
+#ifdef KALMANDUMP define DEBUG
+#endif
 #ifdef DEBUG
-  Serial.begin(9600);
+  Serial.begin(115200);
+#endif
+#ifdef KALMANDUMP undefine DEBUG
 #endif
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
@@ -164,7 +200,7 @@ void setup()
     SavePressure(getPressure());
   }
   pressureStart= getAveragePress();
-  alt=getAverageAltitude(); 
+  alt=getAltitude(getPressure (),Temp);
 #ifdef FORCE_ABSOLUTE_ALT
   SendAlt(1);  // send initial height
   SendValue(0x00,int16_t(1)); //>> overwrite alt offset in open 9x in order to start with display of absolute altitude... 
@@ -177,22 +213,29 @@ void setup()
 /********************************************************************************** Loop () */
 void loop()
 {
-  SavePressure(getPressure()); // Fill the pressure buffer
-  
-  // ------------------------------------------------------ Do the math every 100ms
+  long pressure;
+  pressure=getPressure();
+  SavePressure(pressure);// Fill the pressure buffer
+  rawalt=getAltitude(pressure,Temp);
+  alt=kalman_update(rawalt);
+
+  // ------------------------------------------------------ Do the math every 50ms
   if( (lastMillisCalc + calcIntervallMS) <=millis()) 
   {
     lastMillisCalc=millis(); 
-    alt=getAverageAltitude();
+    //alt=getAverageAltitude();
     climbRate=GetClimbRate(alt);
+#ifdef LED_ClimbBlink 
+    if(climbRate >10) ledOn();else ledOff();
+#endif
   }
   // ---------------------------------------------------- Frame 1 to send every 200ms 
   if( (lastMillisFrame1 + 200) <=millis()) 
   {
     lastMillisFrame1=millis(); 
     avgPressure=getAveragePress(); 
-    
 #ifdef DEBUG
+    Serial.print(" Pressure:");    Serial.print(pressure,DEC);
     Serial.print(" AveragePressure:");    Serial.print(avgPressure,DEC);
     Serial.print(" Altitude:");      Serial.print(alt,DEC);
     Serial.print(" ClimbRate:");      Serial.print(climbRate,DEC);
@@ -219,10 +262,13 @@ void loop()
   SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)climbRate); // ClimbRate in open9x Vario mode
 #endif
 #ifdef SEND_VREF 
-    SendCellVoltage(0,readVccMv()); // internal voltage as cell 0 which is not optimal. somebody will probably have to add another id for this or change the the way the vfas voltage gets displayed 
+    // internal voltage as cell 0 which is not optimal. somebody will probably have to add another id
+    // for this or change the the way the vfas voltage gets displayed 
+    SendCellVoltage(0,readVccMv()); 
 #endif   
 #ifdef SEND_VFAS_NEW
-    SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)readVccMv()/100); // vcc as vfas (supposed to be working in an upcoming version of open9x)
+    // vcc as vfas (supposed to be working in an upcoming version of open9x)
+    SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)readVccMv()/100); 
 #endif   
 #ifdef PIN_VoltageCell1 
     SendCellVoltage(1,ReadVoltage(PIN_VoltageCell1));
@@ -244,18 +290,22 @@ void loop()
      // send alt as adjusted to precision in dist field
      if (alt <= 32768) SendGPSDist(uint16_t(alt));
      else if (alt < 327680) SendGPSDist(uint16_t(alt/(long)10));
-       else SendGPSDist(uint16_t(alt/(long)100));// If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
+       // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
+       else SendGPSDist(uint16_t(alt/(long)100));
        #endif 
     mySerial.write(0x5E); // End of Frame 1!
-    #ifdef LED_ClimbBlink 
-  if(climbRate >15) ledOn();else ledOff();
-#endif
+
 #ifdef SEND_PressureAsRPM
    SendRPM(uint16_t(avgPressure/10));
 #endif
 #ifdef SEND_PressureAsDIST
    SendGPSDist(uint16_t(avgPressure/10));
 #endif
+#ifdef KALMANPOTI
+   SendTemperature2(kalman_q*10000);
+   SendGPSDist(uint16_t(kalman_r));
+#endif
+ 
 #ifdef ANALOG_CLIMB_RATE   
     SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
 #endif
@@ -286,29 +336,28 @@ void SendAnalogClimbRate(long cr)
   analogWrite(PIN_AnalogClimbRate,(int)outValue);
 }
 #endif
+
 /*********************************************************/
 /* GetClimbRate => calculate the current climbRate       */
 /* has to be invoked every 100ms for a queue length of 10 */
 /*********************************************************/
-long GetClimbRate(long alti){
-  static long climbRateQueue[10];
-  static long lastAlti=alti;
+float GetClimbRate(float alti){
+  static float climbRateQueue[5];
+  static float lastAlti=alti;
   static byte cnt=0;
-  climbRate -= climbRateQueue[cnt];  // overwrite the oldest value in the queue
+  static float myClimbRate=0;
+  myClimbRate -= climbRateQueue[cnt]; // overwrite the oldest value in the queue
   climbRateQueue[cnt]=alti-lastAlti; // store the current height difference
-
   cnt+=1;
-  if (cnt ==10)cnt=0;
-  
-  climbRate += alti-lastAlti; // add the current height difference
+  if (cnt ==5)cnt=0;
+  myClimbRate += alti-lastAlti; // add the current height difference
   lastAlti=alti;
-  return(climbRate);
+  return(myClimbRate*8);
 }
-   
+
 /**********************************************************/
 /* SendValue => send a value as frsky sensor hub data     */
 /**********************************************************/
- 
 void SendValue(uint8_t ID, uint16_t Value) {
   uint8_t tmp1 = Value & 0x00ff;
   uint8_t tmp2 = (Value & 0xff00)>>8;
@@ -345,7 +394,6 @@ void SendCellVoltage(uint8_t cellID, uint16_t voltage) {
 /* SendGPSDist => send 0..32768   */
 /**********************************/
 void SendGPSDist(uint16_t dist) {// ==> Field "Dist" in open9x
- //dist=constrain(dist,0,65535);
  SendValue(0x3C,uint16_t(dist)); //>> DIST
 }
 void SendTemperature1(int16_t tempc) {
@@ -375,13 +423,12 @@ void SendCurrent(float amp) {
 void SendAlt(long altcm)
 {
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
-
   uint16_t Centimeter =  uint16_t(altcm%100);
   int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
 #ifdef FORCE_ABSOLUTE_ALT
   Meter-=1; // To compensate for a Offset of 1 at the beginning
 #endif
-#ifdef DEBUG
+#ifdef XDEBUG
   Serial.print("Meter:");
   Serial.print(Meter);
   Serial.print(",");
@@ -394,9 +441,8 @@ void SendAlt(long altcm)
 
 void SendGPSAlt(long altcm)
 {
-  altcm+=100;// The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
-//  int16_t Meter = int16_t(alt/100);
-//  uint16_t Centimeter =  uint16_t((abs(alt/100) -abs(Meter)) *100);
+  altcm+=100;// The initial altitude setting in open9x seems not to  work if we send 0m. 
+             // it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
   uint16_t Centimeter =  uint16_t(altcm%100);
   int16_t Meter = int16_t((altcm-Centimeter)/100);
   
@@ -406,7 +452,6 @@ void SendGPSAlt(long altcm)
   Serial.print("Centimeter:");
   Serial.println(Centimeter);
 #endif
-
   SendValue(FRSKY_USERDATA_GPS_ALT_B, Meter);
   SendValue(FRSKY_USERDATA_GPS_ALT_A, Centimeter);
 }
@@ -415,34 +460,25 @@ void SendGPSAlt(long altcm)
 /* getAltitude - convert mbar and temperature into an altitude  */
 /*               value                                          */
 /****************************************************************/
-long getAltitude(long press, int temp) {
+float getAltitude(long press, int temp) {
   float   result;
   temp/=10;
   result=(float)press/100;
   const float sea_press = 1013.25;
-  return long(((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
+//  return long(((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
+  return (((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
 }
 
 /****************************************************************/
 /* SavePressure - save a new pressure value to the buffer       */
-/*                                                              */
+/* Rotating Buffer for calculating the Average Pressure         */
 /****************************************************************/
-/* Rotating Buffer for calculating the Average Pressure */
 void SavePressure(long currentPressure){
-  static unsigned long lastpmillis=0;
   static int cnt =0;
   pressureValues[cnt++]=currentPressure;
   if(cnt>AverageValueCount){
       cnt=0;
-      BufferRoundTrip=millis()-lastpmillis;
-      lastpmillis=millis();
-#ifdef LED_BufferBlink
-        ledOn();
-#endif
   }
-#ifdef LED_BufferBlink
-  else if(cnt==1)ledOff(); 
-#endif
 }
 /****************************************************************/
 /* getAveragePress - calculate average pressure based on all    */
@@ -451,22 +487,7 @@ void SavePressure(long currentPressure){
 long getAveragePress()
 {
   long result=0;
-  for (int i=0;i<=AverageValueCount;i++) result +=pressureValues[i];
-  return result/AverageValueCount;
-}
-
-/****************************************************************/
-/* getAverageAltitude - calculate average altitude based on all */
-/* entries in the pressure buffer                               */
-/* Additionally the average climb Rate will be calculated.      */
-/****************************************************************/
-float getAverageAltitude()
-{
-  
-  float result=0;
-   for (int i=0;i<AverageValueCount;i++){
-     result +=getAltitude(pressureValues[i],Temp);
-   }
+  for (int i=0;i<AverageValueCount;i++) result +=pressureValues[i];
   return result/AverageValueCount;
 }
 
@@ -485,12 +506,9 @@ long getPressure()
   dT = D2 - ((long)calibrationData[5] << 8);
   TEMP = (2000 + (((int64_t)dT * (int64_t)calibrationData[6]) >> 23)) / (float)100;
   Temp=(int)(TEMP*10);
-  // getAverageTemperature((int)(TEMP*10)); // temp 31.5C => 315
   OFF = ((unsigned long)calibrationData[2] << 16) + (((int64_t)calibrationData[4] * dT) >> 7);
   SENS = ((unsigned long)calibrationData[1] << 15) + (((int64_t)calibrationData[3] * dT) >> 8);
   P = (((D1 * SENS) >> 21) - OFF) >> 15;
- // Serial.print("P=");
- // Serial.println(P,DEC);
   return P;
 }
 
@@ -504,9 +522,9 @@ long getData(byte command, byte del)
   delay(del);
   twiSendCommand(I2CAdd, 0x00);
   Wire.requestFrom(I2CAdd, 3);
-  #ifdef DEBUG
+#ifdef DEBUG
   if(Wire.available()!=3)Serial.println("Error: raw data not available");
-  #endif
+#endif
 
   for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
   return result;
@@ -517,21 +535,20 @@ long getData(byte command, byte del)
 /****************************************************************/
 void setupSensor()
 {
+#ifdef DEBUG
   Serial.println("Setup Sensor Start.");
+#endif
   twiSendCommand(I2CAdd, 0x1e);
   delay(100);
-
   for (byte i = 1; i <=6; i++)
   {
     unsigned int low, high;
-
     twiSendCommand(I2CAdd, 0xa0 + i * 2);
     Wire.requestFrom(I2CAdd, 2);
     if(Wire.available()!=2) {
 #ifdef DEBUG
       Serial.println("Error: calibration data not available");
 #endif
-
     }
     high = Wire.read();
     low = Wire.read();
@@ -567,7 +584,6 @@ void twiSendCommand(byte address, byte command)
     Serial.print("Error when sending command: ");
     Serial.println(command, HEX);
 #endif
-
   }
 }
 
@@ -630,5 +646,49 @@ int readVccMv() {
   //result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   result = scaleConst / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   return (int)result; // Vcc in millivolts
+}
+
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+float kalman_update(float measurement)
+{
+  static int lcnt=0;
+  static float x=alt; //value
+  static float p=100; //estimation error covariance
+  static float k=0; //kalman gain
+#ifdef KALMANPOTI
+  // Use 2 analog potis (4,7K) connected to A2 and A3 in order to adjust the 2 main parameters of this filter
+  // outer pins of each pot to +5 and GND, wiper to A2,A3
+  float pl=analogRead(2);
+  int pr=analogRead(3);
+  pl=mapFloat(pl,0,1023,0,0.1);  // range for q is 0-0.1
+  pr=mapFloat(pr,0,1023,0,1000); // range for r is 0-1000
+  kalman_q = pl; // the process noise q, 
+  kalman_r = pr; // the sensor noise r, 
+#endif
+  
+  // update the prediction value
+  p = p + kalman_q;
+
+  // update based on measurement
+  k = p / (p + kalman_r);
+  x = x + k * (measurement - x);
+  p = (1 - k) * p;
+  
+  /*
+  abweichung=measurement -kalman_state.x;
+  Serial.print("q=");Serial.print(q);  Serial.print(" r=");Serial.print(r);
+  Serial.print(" p=");  Serial.print(p);  Serial.print(" X=");Serial.print(x);
+  Serial.print(" k=");Serial.print(k);  Serial.print(" D=");Serial.print(abweichung );
+  Serial.println();*/
+
+#ifdef KALMANDUMP
+  abweichung=measurement -x;
+  // output to processing.
+  Serial.print(rawalt);Serial.print(",");Serial.print(x);Serial.print(",");Serial.println(abweichung);
+#endif
+  return x;
 }
 
