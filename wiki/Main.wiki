@@ -92,10 +92,10 @@ Pins to be connected:
 
 https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
 
-The MS5611 module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 differen voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
+The MS5611 module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
 On an arduino pro mini the A4+A5 pins are normally located on the inner part of the board (as in the picture). 
 
-The more common modules can be mounted using a dual 2.54mm header pin. additionally you would then just need 2 small cables to connect the power.
+The more common modules can be mounted using a dual 2.54mm header pin. Additionally you would then just need 2 small cables to connect the power.
 
 === Optional: connect analog climb rate signal to A1 or A2 ===
 In case you receiver only has A1/ or A2 for telemetry you can still try to use the analog output mode for the climb rate: AnalogClimbRate
@@ -109,7 +109,7 @@ SparkFun has a nice tutorial in which they describe the programming of the Ardui
 As a programmer i recommend the "FTDI basic" type of programmers which is available on ebay. I got one that has male headers directly on the programmer, so you can place the arduino directly on those headers. 
 http://openxvario.googlecode.com/svn/wiki/images/programming.jpg
 
-If your´s hasn´t got those male headers, just plug some header pins into the female headers of the porogrammer and the other end directly into the arduino pro mini.
+If yours hasn´t got those male headers, just plug some header pins into the female headers of the programmer and the other end directly into the arduino pro mini.
 
 == Setting up the sensor data in open9x ==
 On the telemetry setup page, change the following values:
