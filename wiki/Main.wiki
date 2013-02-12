@@ -13,7 +13,9 @@ https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
 
 === Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
 https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
+
 Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
+
 https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
 
 === Sensor data send to open9x ===
