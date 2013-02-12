@@ -55,7 +55,8 @@ I of course do not take any warranty whatsoever for the instructions below. Do i
 
 == Stuff you will need ==
   * an open 9x based transmitter with audio and frsky telemetry modifications
-  * or an Arduino Pro Mini 5V 16Mhz 
+  * an Arduino Pro Mini 5V 16Mhz 
+  * a FTDI cable ( e.g. FTDI Basic) that provides the DTR Signal to autoreset the arduino when programming)
   * a 5V MS5611 Sensor Module for around 15€-20€ on eBay
   * a suitable Fr-Sky telemetry enabled receiver with a RS232 port or alternativly one free analog input signal (A1 or A2) to transfer the lift/sink rate. 
   * a standard servo cable
@@ -70,23 +71,23 @@ WARNING: make sure you are using only one Power Source for the Arduino. If you c
 You can use a standard servo cable to connected the Arduino to a free servo port of the frsky receiver.
 Pins to be connected:
 {{{
-    Powering the Arduino:
+=== Powering the Arduino: ===
      Arduino GND   --------------------- Receiver GND (Servo Plug)
      Arduino RAW   --------------------- Receiver +5V (Servo Plug)
-    Optional PPM Input from servo port to the arduino:
+
+=== Optional PPM Input from servo port to the arduino: ===
     Arduino Pin 4 --------------------- Receiver PPM Signal (Servo Plug)
 
-    Output of the data to the receiver:
+=== Output of the data to the receiver: ===
      Arduino Pin 2 --------------------- Receiver RX Pin (If there is a RS232 Port on the receiver)
-    or
+  or
      Arduino Pin 3 --------------------- Receiver A1 or A2 (If there is NO RS232 Port on the receiver)
 
-    connecting the MS56711 module to the receiver
+=== connecting the MS56711 module to the receiver ===
      Arduino Pin A4--------------------- MS5611 SDA
      Arduino Pin A5--------------------- MS5611 SCL
      Arduino VCC   --------------------- MS5611 5V
      Arduino GND   --------------------- MS5611 GND
-
 }}}
 
 https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
@@ -104,12 +105,11 @@ The code to put on your Arduino can be customized in various way. Check the Comp
 
 here is the Arduino sketch you have to put on the Arduino: https://openxvario.googlecode.com/svn/branches/openxvario/openxvario.ino
 
-SparkFUn has a nice tutorial in which they describe the programming of the Arduino pro mini: http://www.sparkfun.com/tutorials/244 just use the .INO file you can download on this page.
+SparkFun has a nice tutorial in which they describe the programming of the Arduino pro mini: http://www.sparkfun.com/tutorials/244 just use the .INO file you can download on this page.
 As a programmer i recommend the "FTDI basic" type of programmers which is available on ebay. I got one that has male headers directly on the programmer, so you can place the arduino directly on those headers. 
 http://openxvario.googlecode.com/svn/wiki/images/programming.jpg
 
 If your´s hasn´t got those male headers, just plug some header pins into the female headers of the porogrammer and the other end directly into the arduino pro mini.
-
 
 == Setting up the sensor data in open9x ==
 On the telemetry setup page, change the following values:
