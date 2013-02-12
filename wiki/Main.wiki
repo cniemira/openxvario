@@ -4,19 +4,15 @@
 = Introduction =
 If you found this page, you are probably as well infected by the "build your own Variometer" virus. 
 The openXvario is my contribution to the 9X community. 
-It is designed to work together with the open source firmware open9x for the turnigy 9x transmitter. but with little modifications it should work with any FrSky telemetry enabled system.
+It is designed to work together with the open source firmware open9x for the turnigy 9x transmitter. but with little modifications it should work with any Fr-Sky telemetry enabled system.
 
 Discussion about this project: http://9xforums.com/forum/viewforum.php?f=86
-https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
-
-
-
-=== Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
 https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
 
-Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
-
 https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
+
+Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
+== Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ==
 
 === Sensor data send to open9x ===
 here´s an example how it might look in open9x:
@@ -37,11 +33,12 @@ the following can be transmitted:
   * supply voltage as VFAS Voltage ( id 0x39) or as cell 0 in id 0x06
   * temperature (from MS5611) as T1 ID 0x02
   * 6 single voltage values connected to the pins as configured as cell 1-6 in id 0x06
-  * various other field for diagnostic purposed ( e.g. internal kalman filter parameters
+  * various other field for diagnostic purposed ( e.g. internal kalman filter parameters)
 
 WARNING: Do NOT attempt to directly connect the 6 available cell voltages to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the Arduino pin limits (keep the smoke in!)
 
-It is all work in progress. It would be fairly easy to add in additional sensors if we stuff in the needed code. 
+== Remote control your openXvario ==
+You can (optionaly) use a servo channel to control the sensitivity of the vario from your transmitter. Just map a potentiometer from your 9X to the channel used to power up the openXvario and include the option in the configuration section of the source code. (see CompileOptions for details on how to enable this feature)
 
 == Credits ==
 I got the idea and a lot of code for this project from this thread: http://www.rcgroups.com/forums/showthread.php?t=1749208
@@ -53,7 +50,6 @@ The voltage calibration code ist from here: http://provideyourown.com/2012/secre
 The kalman filter is based on the information from this site: http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
 
 and many thanks to bertrand for the changes to open 9x!
-
 
 I of course do not take any warranty whatsoever for the instructions below. Do it at your own risk. Read and understand all of the information below before you begin.
 
@@ -67,7 +63,6 @@ I of course do not take any warranty whatsoever for the instructions below. Do i
   * a 2pin 2.54mm header ( to easiliy mount the more common MS5611 modules
   * some heat shrink tube for the variometer(I used a 28mm one) 
   * some smaller heat shrink tube for the female header pins used to connect the openXvario to the receiver's RS232 / A1/2 port
-
 
 == Connecting the Arduino to the receiver ==
 WARNING: make sure you are using only one Power Source for the Arduino. If you connect the arduino to the PC, always disconnect the 5V to the receiver first! 
