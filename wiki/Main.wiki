@@ -17,13 +17,13 @@ Hint: this prototype is not using the ppm signal from the receiver. new pictures
 === Sensor data send to open9x ===
 here´s an example how it might look in open9x:
 https://openxvario.googlecode.com/svn/wiki/images/open9xTelemetryScreen.jpg
-ALT => the relative altitude
-VSpd => the vertical speed
-Dist => 279.22 the absolute height as calculated form air pressure+temp
-Cels => the input voltage of the Arduino
-RPM => 1056 mbar = the current air pressure (not the best resolution in this field...)
-T1 => 25C the temperature measured byt the ms5611
 
+  * ALT => the relative altitude
+  * VSpd => the vertical speed
+  * Dist => 279.22 the absolute height as calculated form air pressure+temp
+  * Cels => the input voltage of the arduino
+  * RPM => 1056 mbar = the current air pressure (not the best resolution in this field...)
+  * T1 => 25C the temperature measured by the ms5611
 the dist and RPM fields are being "misused" a bit here :D
 
 You can configure this to your liking by just uncommenting some lines in the code. e.g. you can choose what you want in the dist or RPM field: nothing, Altitude,Air pressure..
