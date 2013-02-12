@@ -17,7 +17,7 @@ As the arduino will output the lift/sink rate as a PWM signal, this signal has t
 
 {{{
 ARDUINO               FrSky Receiver
-pin 9 ----- R1 -----+----- A1 or A2
+pin 3 ----- R1 -----+----- A1 or A2
                     |
                     C1
                     |
