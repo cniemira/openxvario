@@ -25,5 +25,7 @@ gnd      ------------
 }}}
   * R1= 1kOhm
   * C1= 10..100uF Electrolytic Capacitor  ( i currently use 22uF )
+This is how you can put it together:
+https://openxvario.googlecode.com/svn/wiki/images/filterInstruction.png
 
 I do not own a scope, so somebody with the right equipment might want to fine tune these values a bit or come up with a better filter
