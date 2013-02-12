@@ -2,20 +2,23 @@
 #labels Featured,Phase-Requirements,Phase-Deploy
 
 = Introduction =
+If you found this page, you are probably as well infected by the "build your own Variometer" virus. 
+The openXvario is my contribution to the 9X community. 
+It is designed to work together with the open source firmware open9x for the turnigy 9x transmitter. but with little modifications it should work with any FrSky telemetry enabled system.
+
 Discussion about this project: http://9xforums.com/forum/viewforum.php?f=86
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
+
+
 
 === Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ===
-http://openxvario.googlecode.com/svn/wiki/images/openxvarioAndD8R.jpg
-http://openxvario.googlecode.com/svn/wiki/images/openxvarioNaked.jpg
-
-watch out: in the picture the rs232 cable is connected to pin 10, in the current version i changed this to pin 2
-
-
-I started this project in order to use the MS5611 barometric sensor to send data via FR-Sky to open9x.
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
+Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
 
 === Sensor data send to open9x ===
 here´s an example how it might look in open9x:
-http://imageshack.us/photo/my-images/593/20130202152825.jpg
+https://openxvario.googlecode.com/svn/wiki/images/open9xTelemetryScreen.jpg
 ALT => the relative altitude
 VSpd => the vertical speed
 Dist => 279.22 the absolute height as calculated form air pressure+temp
@@ -25,68 +28,74 @@ T1 => 25C the temperature measured byt the ms5611
 
 the dist and RPM fields are being "misused" a bit here :D
 
-you can configure this to your liking by just uncommenting some lines in the code.
-e.g. you can choose what you want in the dist or RPM field: nothing, Altitude,Air pressure..
+You can configure this to your liking by just uncommenting some lines in the code. e.g. you can choose what you want in the dist or RPM field: nothing, Altitude,Air pressure..
 
 the following can be transmitted:
-  * absolute altitude ( ID 0x10 and 0x21)
-  * supply voltage as cell 0 in id 0x06
+  * absolute altitude (ID 0x10 and 0x21)
+  * supply voltage as VFAS Voltage ( id 0x39) or as cell 0 in id 0x06
   * temperature (from MS5611) as T1 ID 0x02
   * 6 single voltage values connected to the pins as configured as cell 1-6 in id 0x06
+  * various other field for diagnostic purposed ( e.g. internal kalman filter parameters
 
-WARNING: Do NOT attempt to directly connect these to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the Arduino pin limits (keep the smoke in!)
+WARNING: Do NOT attempt to directly connect the 6 available cell voltages to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the Arduino pin limits (keep the smoke in!)
 
-It is all work in progress. It would be fairly easy to add in additional sensors if we stuff in the needed code. you could even try to get a 11DOF module working if you fancy all the data.
+It is all work in progress. It would be fairly easy to add in additional sensors if we stuff in the needed code. 
 
 == Credits ==
 I got the idea and a lot of code for this project from this thread: http://www.rcgroups.com/forums/showthread.php?t=1749208
+
 The code to write the frsky packages is based on the work in this thread: http://fpv-community.de/showthread.php?18566-FrSky-Telemetrie-Protokoll
-the voltage calibration code ist from here: http://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
-and thanks to bertrand for the changes to open 9x!
+
+The voltage calibration code ist from here: http://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
+
+The kalman filter is based on the information from this site: http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
+
+and many thanks to bertrand for the changes to open 9x!
+
 
 I of course do not take any warranty whatsoever for the instructions below. Do it at your own risk. Read and understand all of the information below before you begin.
 
 == Stuff you will need ==
-
   * an open 9x based transmitter with audio and frsky telemetry modifications
-  * an Arduino nano (builtin USB port +3.3v voltage in case you have a 3.3v Version of the sensor)
-  * or an Arduino Pro Mini (more compact)
-  * a MS5611 Sensor Module (preferable a 5V version) for around 15€-20€ on eBay
-  * a suitable Fr-Sky telemetry enabled receiver with at least one analog signal ( A1 or A2) to transfer the lift/sink rate. If you want to receive the altimeter and supply voltage information as well you need a receiver with the RS232 interface like for example the D8R-II (any version should work)
+  * or an Arduino Pro Mini 5V 16Mhz 
+  * a 5V MS5611 Sensor Module for around 15€-20€ on eBay
+  * a suitable Fr-Sky telemetry enabled receiver with a RS232 port or alternativly one free analog input signal (A1 or A2) to transfer the lift/sink rate. 
   * a standard servo cable
-  * a 2pin 2.54mm header
-  * some heat shrink tube ( is used a 28mm one) or something else to keep the smoke inside
-  * some knowledge of Arduino,some cable+coffee[/list]
+  * one single lead and connector pin from a servo connector (or a female header pin and a piece of cable.
+  * a 2pin 2.54mm header ( to easiliy mount the more common MS5611 modules
+  * some heat shrink tube for the variometer(I used a 28mm one) 
+  * some smaller heat shrink tube for the female header pins used to connect the openXvario to the receiver's RS232 / A1/2 port
+
 
 == Connecting the Arduino to the receiver ==
-WARNING: make sure you are using only one Power Source for the Arduino. If i connect the arduino to the PC, i always disconnect the 5V to the receiver and power the receiver via it´s own battery+BEC.
+WARNING: make sure you are using only one Power Source for the Arduino. If you connect the arduino to the PC, always disconnect the 5V to the receiver first! 
 
 You can use a standard servo cable to connected the Arduino to a free servo port of the frsky receiver.
--GND and +5V from the servo port. go to the supply voltage pins on the Arduino.
-The Arduino has to ways to feed it with power: 
+Pins to be connected:
+{{{
+    Powering the Arduino:
+     Arduino GND   --------------------- Receiver GND (Servo Plug)
+     Arduino RAW   --------------------- Receiver +5V (Servo Plug)
+    Optional PPM Input from servo port to the arduino:
+    Arduino Pin 4 --------------------- Receiver PPM Signal (Servo Plug)
 
-  * the RAW or VIN  Pin takes  5 - 12 V use this one if you are conecting directly to a battery above 5v
-  * the VCC pin takes regulated 5V use this one if you have a BEC
+    Output of the data to the receiver:
+     Arduino Pin 2 --------------------- Receiver RX Pin (If there is a RS232 Port on the receiver)
+    or
+     Arduino Pin 3 --------------------- Receiver A1 or A2 (If there is NO RS232 Port on the receiver)
 
-The serial output on pin 9 of the Arduino has to be connected to the RS232 RX pin on the FR-Sky receiver. You can use the signal line from the servo cable used to power the Arduino
+    connecting the MS56711 module to the receiver
+     Arduino Pin A4--------------------- MS5611 SDA
+     Arduino Pin A5--------------------- MS5611 SCL
+     Arduino VCC   --------------------- MS5611 5V
+     Arduino GND   --------------------- MS5611 GND
 
-http://openxvario.googlecode.com/svn/wiki/images/step1.jpg
-http://openxvario.googlecode.com/svn/wiki/images/step2.jpg
-http://openxvario.googlecode.com/svn/wiki/images/step3.jpg
-http://openxvario.googlecode.com/svn/wiki/images/step4.jpg
+}}}
 
+https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
 
-== Connecting the MS5611 to the Arduino ==
-The ms5611 has to be connected to the Arduino with the following connections:
-The MS5611 module in the following picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 differen voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
-
-https://openxvario.googlecode.com/svn/wiki/images/step5.jpg
-
-  * SCLK to the A5 pin on the Arduino
-  * SDA_I to the A4 pin on the Arduino
-  * GND to GND on the Arduino
-  * VDD to +5V on the Arduino (VCC)
-on an arduino pro mini the A4+A5 pins are normally located on the inner part of the board (as in the picture). 
+The MS5611 module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 differen voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
+On an arduino pro mini the A4+A5 pins are normally located on the inner part of the board (as in the picture). 
 
 The more common modules can be mounted using a dual 2.54mm header pin. additionally you would then just need 2 small cables to connect the power.
 
