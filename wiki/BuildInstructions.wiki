@@ -31,7 +31,7 @@ Pins to be connected:
      Arduino RAW   --------------------- Receiver +5V (Servo Plug)
 
 === Optional PPM Input from servo port to the arduino: ===
-    Arduino Pin 4 --------------------- Receiver PPM Signal (Servo Plug)
+     Arduino Pin 4 --------------------- Receiver PPM Signal (Servo Plug)
 
 === Output of the data to the receiver: ===
      Arduino Pin 2 --------------------- Receiver RX Pin (If there is a RS232 Port on the receiver)
