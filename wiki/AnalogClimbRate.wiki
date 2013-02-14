@@ -22,9 +22,11 @@ pin 3 ----- R1 -----+----- A1 or A2
                     C1
                     |
 gnd      ------------
+
+R1= 1kOhm
+C1= 10..100uF Electrolytic Capacitor  ( i currently use 22uF )
 }}}
-  * !R1= 1kOhm
-  * C1= 10..100uF Electrolytic Capacitor  ( i currently use 22uF )
+  
 This is how you can put it together:
 https://openxvario.googlecode.com/svn/wiki/images/filterInstruction.png
 
