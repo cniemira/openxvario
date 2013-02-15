@@ -88,10 +88,6 @@ Play around with these to receive the best tone
   * configure your telemetry screens to your liking..
   * setup a switch to turn on/off the vario tone generation
 the remaining setup fot the switch + telemetry screen is described in the open9x documentation
-== Some comments about the code ==
-The pressure values from the sensor will be placed in a rotating buffer. Increasing the size of this buffer will reduce noise but also reduce reaction time.
-All pin assignment are configurable.
-If you are using “#define DEBUG”, this interferes with the data read from the MS5611 and the generation of the PWM signal, resulting in unexpected output.
 
 
 Have fun,
