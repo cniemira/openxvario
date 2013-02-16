@@ -21,7 +21,7 @@ I of course do not take any warranty whatsoever for the instructions below. Do i
   * some heat shrink tube for the variometer(I used a 28mm one) 
   * some smaller heat shrink tube for the female header pins used to connect the openXvario to the receiver's RS232 / A1/2 port
 
-== Connecting the Arduino to the receiver ==
+== Connecting the Arduino to the receiver and MS5611 module ==
 WARNING: make sure you are using only one Power Source for the Arduino. If you connect the arduino to the PC, always disconnect the 5V to the receiver first! 
 
 You can use a standard servo cable to connected the Arduino to a free servo port of the frsky receiver.
@@ -46,6 +46,16 @@ Pins to be connected:
      Arduino GND   --------------------- MS5611 GND
 }}}
 
+There are various different MS5611 Modules available. I have used the following so far:
+
+https://openxvario.googlecode.com/svn/wiki/images/GY-63_200x.jpg
+
+This is one of the more common modules.
+i normaly mount it on the back of the arduino (back to back)
+
+https://openxvario.googlecode.com/svn/wiki/images/CJMCU200x.jpg
+
+This is a module that is slightly bigger. I mounted it on top of the arduino.
 https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
 
 The MS5611 module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
