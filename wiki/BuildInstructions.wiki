@@ -47,12 +47,15 @@ Pins to be connected:
 }}}
 
 There are various different MS5611 Modules available. I have used the following so far:
+== the GY-63 module ==
 
 https://openxvario.googlecode.com/svn/wiki/images/GY-63_200x.jpg
 
 This is one of the more common modules.
 i normaly mount it on the back of the arduino (back to back)
+https://openxvario.googlecode.com/svn/wiki/images/BuildInstructionGY63B.png
 
+== the GCMCU module ==
 https://openxvario.googlecode.com/svn/wiki/images/CJMCU200x.jpg
 
 This is a module that is slightly bigger. I mounted it on top of the arduino.
