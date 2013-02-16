@@ -57,10 +57,10 @@ i normaly mount it on the back of the arduino (back to back) using a 2pin Header
 
 https://openxvario.googlecode.com/svn/wiki/images/BuildInstructionGY63B.png
 ----
-== the GCMCU-5611 module ==
+== the CJMCU-5611 module ==
 https://openxvario.googlecode.com/svn/wiki/images/CJMCU200x.jpg
 
-The GCMCU_5611module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay. It is slightly bigger than the GY63. I mounted it on top of the arduino.
+The CJMCU-5611module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay. It is slightly bigger than the GY63. I mounted it on top of the arduino.
 https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
 
 === Optional: connect analog climb rate signal to A1 or A2 ===
