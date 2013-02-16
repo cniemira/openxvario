@@ -53,19 +53,15 @@ There are various different MS5611 Modules available. I have used the following 
 https://openxvario.googlecode.com/svn/wiki/images/GY-63_200x.jpg
 
 This is one of the more common modules.
-i normaly mount it on the back of the arduino (back to back)
+i normaly mount it on the back of the arduino (back to back) using a 2pin Header (without the plastic spacer) on the A4+A5 pins 
+
 https://openxvario.googlecode.com/svn/wiki/images/BuildInstructionGY63B.png
 ----
-== the GCMCU module ==
+== the GCMCU-5611 module ==
 https://openxvario.googlecode.com/svn/wiki/images/CJMCU200x.jpg
 
-This is a module that is slightly bigger. I mounted it on top of the arduino.
+The GCMCU_5611module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay. It is slightly bigger than the GY63. I mounted it on top of the arduino.
 https://openxvario.googlecode.com/svn/wiki/images/Wiring%20Diagram%20V2.png
-
-The MS5611 module in the above picture is not the most common module, but works fine. It even has 2 seperated I2C bus connectors for the 2 different voltages (3.3V/5V). I got this one from a seller located in UK over ebay.
-On an arduino pro mini the A4+A5 pins are normally located on the inner part of the board (as in the picture). 
-
-The more common modules can be mounted using a dual 2.54mm header pin. Additionally you would then just need 2 small cables to connect the power.
 
 === Optional: connect analog climb rate signal to A1 or A2 ===
 In case you receiver only has A1 or A2 for telemetry you can still try to use the analog output mode for the climb rate: AnalogClimbRate
