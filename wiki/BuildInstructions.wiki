@@ -56,6 +56,9 @@ This is one of the more common modules.
 i normaly mount it on the back of the arduino (back to back) using a 2pin Header (without the plastic spacer) on the A4+A5 pins 
 
 https://openxvario.googlecode.com/svn/wiki/images/BuildInstructionGY63B.png
+
+https://openxvario.googlecode.com/svn/wiki/images/gy63bSteps.png
+
 ----
 == the CJMCU-5611 module ==
 https://openxvario.googlecode.com/svn/wiki/images/CJMCU200x.jpg
