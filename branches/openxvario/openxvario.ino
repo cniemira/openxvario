@@ -11,7 +11,7 @@
 //                    instead or add in a resistor or voltage regulator)
 // MS5611 GnD => GND
  
-#define PIN_SerialTX 2        // 2  the pin to transmit the serial data to the frsky telemetry enabled receiver
+#define PIN_SerialTX 4        // 2  the pin to transmit the serial data to the frsky telemetry enabled receiver
 #define PIN_ClimbLed 13       // 13 the led used to indicate lift ( led lights up above +0.10m/s)
 
 // Define a voltagepin if you want to transmit the value to open9x:
@@ -23,7 +23,7 @@
 //#define PIN_VoltageCell6 7    //  Pin for measuring Voltage of cell 6 ( Analog In Pin! )
 
 // Choose if the led should be used for indicationg lift.
-#define LED_ClimbBlink     // Blink when climbRate > 0.10cm
+#define LED_ClimbBlink 5  // Blink when climbRate > 0.10cm
 
 #define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
                            // in an absolute height diplay. (that you can still set to 0 by pressing [MENU] in the telem.screens
@@ -40,22 +40,36 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 #define SEND_VREF       // Voltage Reference as cell0
 #define SEND_VFAS_NEW   // Voltage as VFAS 
 #define SEND_TEMP_T1    // MS5611 temperature as Temp1
-//#define SEND_TEMP_T2    // MS5611 temperature as Temp2
-//#define SEND_AltAsRPM   // Altitude in RPM ;-)
-#define SEND_AltAsDIST  // Altitude in DIST
-//#define SEND_PressureAsDIST // pressure in DIST field
-#define SEND_PressureAsRPM  // pressure in RPM Field
 
+//************************** Which data to send in the T1 (temperature 1) Field? (choose only one) 
+//#define SEND_TEMP_T1      // MS5611 temperature as Temp1
+#define SEND_PressureAsT1 9000 // pressure in 1/10th of mBar in T1 Field subtracted by the number in the define statment. 
+                              // e.g. 950mbar => 9500 -offset of 9000 => 500
+//************************** Which data to send in the RPM Field? (choose only one) (unprecise field! resolution is in steps of 30RPM!)
+//#define SEND_AltAsRPM   // Altitude in RPM ;-)
+//#define SEND_KalmanRasRPM // Kalman Param R in RPM
+//#define SEND_PressureAsRPM  // pressure in RPM Field
+
+//************************** Which data to send in the DIST Field? (choose only one)
+#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will be subtracted from the actual height for higher display precision.
+                           // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7) if we subtract 300 display will be 156 78
+                           // This is due to the fact that the highest precission in this field will only be transmitted up to an altitude of 327.68 m
+//#define SEND_KalmanRasDist // Kalman Param R in DIST
+//#define SEND_PressureAsDIST // pressure in DIST field
+
+//************************** Which data to send in the T2 (temperature 2) Field? (choose only one)
+//#define SEND_TEMP_T2    // MS5611 temperature as Temp2
+#define SEND_KalmanRasT2 // Kalman Param R in Temp2
 //************************** Data Filtering => kalman Filter Parameters *********************/
 // The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can be adjusted by 
 // changing the value Q (process Noise) and R (Sensor Noise) best pactise is to just change R, as both
 // parametrers influence each other. (less Q requires more R to compensate and vica versa)
 #define KALMAN_Q 0.05 // 0.05 do not tamper unless you are looking for adventure ;-)
-#define KALMAN_R 200// 100=fast but more error  (good for sensor testing...but lots quite some noise)
-                    // 200=medium speed and less false indicationa (nice medium setting with 
-                    //     a silence window (indoor)of at least -0.2 to +0.2)
-                    // 400=conservative setting ;-)
-                    // 1000=still useable maybe for a slow flyer?
+#define KALMAN_R 110//  50 =fast but more error  (good for sensor testing...but quite some noise)
+                    // 100 =medium speed and less false indicationa (nice medium setting with 
+                    //      a silence window (indoor)of at -0.2 to +0.2)
+                    // 200 =conservative setting ;-)
+                    // 500=still useable maybe for a slow flyer?
                     // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
                     //      the height of your furniture with this setting. but do not use it for flying ;-)
                     // .. everything inbetween in relation to this.
@@ -78,6 +92,17 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 #define OutputClimbRateMax  3 // 3 this values eqaly 3.2V voltage to the receiver
 #define PIN_AnalogClimbRate 3 // 3 the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 
+//***************************************** PPM Signal from receiver **************************************/
+// if you have the ppm signal from one of your channeld on the receiver connected to your arduino,
+// you can use the value of that channel to "remote control" your openXvario.
+// just uncomment the following line and set the number to the pin of your arduino that you connect the signal to.
+// then choose which parameter you want to control by uncommenting one of the options with their min/max values
+#define PIN_PPM 2          // default: 2 the pin to read the PPM Signal on coming from the receiver.           
+
+// This makes the most sense.. use the ppm signal to control theopenXvario sensitivity
+#define PPM_TO_KALMAN_R    // PPM Signal will be used to control the KALMAN_R (Sensor Noise) parameter
+#define KALMAN_R_MIN 1     // the min value for KALMAN_R
+#define KALMAN_R_MAX 1000  // the max value for KALMAN_R
 /*****************************************************************************************************/
 //                No changes below this line unless you know what you are doing                       /
 /*****************************************************************************************************/
@@ -94,7 +119,7 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-// #define DEBUG
+//#define DEBUG
 
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
@@ -139,7 +164,7 @@ SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
 #define FRSKY_USERDATA_VOLTAGE_A    0x3B
 
 const int AverageValueCount=6; // the number of values that will be used to calculate a new verage pressure
-const int calcIntervallMS = 25; // the intervall for the calculation intervall (do not change!)
+const int calcIntervallMS = 25; //50; // the intervall for the calculation intervall (do not change!)
                                 // the GetClimbRate() requires this to be a fixed value of 50ms currently
 long avgPressure;
 
@@ -147,7 +172,7 @@ long pressureValues[AverageValueCount+1];
 long pressureStart; // airpressure measured in setup() can be used to calculate total climb / relative altitude
 
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
-unsigned long lastMillisCalc,lastMillisFrame1,lastMillisFrame2;
+unsigned long lastMillisCalc,lastMillisVerticalSpeed,lastMillisFrame1,lastMillisFrame2;
 int Temp=0;
 float alt=0,rawalt=0;
 long climbRate=0;
@@ -180,7 +205,11 @@ void setup()
 #ifdef PIN_VoltageCell6   
   pinMode(PIN_VoltageCell6,INPUT); 
 #endif
-  
+
+#ifdef PIN_PPM   
+  pinMode(PIN_PPM,INPUT); 
+#endif
+
   Wire.begin();
 #ifdef KALMANDUMP define DEBUG
 #endif
@@ -219,16 +248,25 @@ void loop()
   rawalt=getAltitude(pressure,Temp);
   alt=kalman_update(rawalt);
 
-  // ------------------------------------------------------ Do the math every 50ms
+  // ------------------------------------------------------ Do the math every <n> ms
   if( (lastMillisCalc + calcIntervallMS) <=millis()) 
   {
     lastMillisCalc=millis(); 
-    //alt=getAverageAltitude();
     climbRate=GetClimbRate(alt);
 #ifdef LED_ClimbBlink 
-    if(climbRate >10) ledOn();else ledOff();
+    if(climbRate >LED_ClimbBlink) ledOn();else ledOff();
 #endif
   }
+  
+/*  if( (lastMillisVerticalSpeed + 100) <=millis()) 
+  {
+    lastMillisVerticalSpeed=millis(); 
+#ifdef SEND_VERT_SPEED   
+  SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)climbRate); // ClimbRate in open9x Vario mode
+  mySerial.write(0x5E); // End of Frame xx!
+#endif
+  }
+  */
   // ---------------------------------------------------- Frame 1 to send every 200ms 
   if( (lastMillisFrame1 + 200) <=millis()) 
   {
@@ -246,17 +284,6 @@ void loop()
 
 #ifdef SEND_Alt          
     SendAlt(alt);
-#endif
-   
-#ifdef SEND_AltAsRPM     
-    SendRPM(alt);
-#endif
-
-#ifdef SEND_TEMP_T1      
-    SendTemperature1(Temp); //internal MS5611 voltage as temperature T1
-#endif
-#ifdef SEND_TEMP_T2      
-    SendTemperature2(Temp); //internal MS5611 voltage as temperature T1
 #endif
 #ifdef SEND_VERT_SPEED   
   SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)climbRate); // ClimbRate in open9x Vario mode
@@ -285,29 +312,65 @@ void loop()
 #ifdef PIN_VoltageCell5 
     SendCellVoltage(5,ReadVoltage(PIN_VoltageCell5));
 #endif
-    // SendCurrent(133.5);    // example to send a current. 
-#ifdef SEND_AltAsDIST
-     // send alt as adjusted to precision in dist field
-     if (alt <= 32768) SendGPSDist(uint16_t(alt));
-     else if (alt < 327680) SendGPSDist(uint16_t(alt/(long)10));
-       // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
-       else SendGPSDist(uint16_t(alt/(long)100));
-       #endif 
-    mySerial.write(0x5E); // End of Frame 1!
 
-#ifdef SEND_PressureAsRPM
-   SendRPM(uint16_t(avgPressure/10));
-#endif
+// ********************************* The DIST Field
+#ifdef SEND_AltAsDIST     // send alt as adjusted to precision in dist field
+     if (alt- SEND_AltAsDIST <= 32768) SendGPSDist(uint16_t(alt- SEND_AltAsDIST ));
+     else if (alt- SEND_AltAsDIST < 327680) SendGPSDist(uint16_t((alt-SEND_AltAsDIST)/(long)10));
+       // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
+       else SendGPSDist(uint16_t((alt-SEND_AltAsDIST)/(long)100));
+#endif 
 #ifdef SEND_PressureAsDIST
    SendGPSDist(uint16_t(avgPressure/10));
 #endif
+#ifdef SEND_KalmanRasDist
+   SendGPSDist(uint16_t(kalman_r));
+#endif
+// ********************************* The Temp 1 FIeld
+#ifdef SEND_TEMP_T1      
+    SendTemperature1(Temp); //internal MS5611 voltage as temperature T1
+#endif
+#ifdef SEND_PressureAsT1 // pressure in T1 Field
+    SendTemperature1(avgPressure-SEND_PressureAsT1*10); //pressure in T1 Field
+#endif
+// ********************************* The Temp 2 FIeld
+#ifdef SEND_TEMP_T2      
+    SendTemperature2(Temp); //internal MS5611 voltage as temperature T1
+#endif
+#ifdef SEND_KalmanRasT2 // Kalman Param R in Temp2
+    SendTemperature2(uint16_t(kalman_r)*10); //internal MS5611 voltage as temperature T1
+#endif
+
+// ********************************* The RPM Field   
+#ifdef SEND_AltAsRPM     
+    SendRPM(alt);
+#endif
+#ifdef SEND_PressureAsRPM
+   SendRPM(uint16_t(avgPressure/10));
+#endif
+#ifdef SEND_KalmanRasRPM
+   SendRPM(uint16_t(kalman_r));
+#endif
+
+// ******************************** Other send stuff...
 #ifdef KALMANPOTI
    SendTemperature2(kalman_q*10000);
    SendGPSDist(uint16_t(kalman_r));
 #endif
- 
+
+   // SendCurrent(133.5);    // example to send a current. 
+   mySerial.write(0x5E); // End of Frame 1!
+
 #ifdef ANALOG_CLIMB_RATE   
-    SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
+   SendAnalogClimbRate(climbRate); //Write the Clib/SinkRate to the output Pin
+#endif
+
+    // Read the ppm Signal from receiver
+#ifdef PIN_PPM   
+    int ppm= pulseIn(PIN_PPM, HIGH, 20000); 
+    #ifdef PPM_TO_KALMAN_R
+       kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
+    #endif
 #endif
   }
   /*
@@ -337,22 +400,27 @@ void SendAnalogClimbRate(long cr)
 }
 #endif
 
-/*********************************************************/
-/* GetClimbRate => calculate the current climbRate       */
-/* has to be invoked every 100ms for a queue length of 10 */
-/*********************************************************/
+/*******************************************************************************/
+/* GetClimbRate => calculate the current climbRate                             */
+/* has to be invoked every 50ms for a queue length of 5 with a multiplier of 4 */
+/* or every 25 ms for a queue length of 5 with a multiplier of 8               */
+/* or every 25 ms for a queue length of 8 with a multiplier of 5               */
+/*******************************************************************************/
+//const byte ClimbRateQueueLength=8;
+const byte ClimbRateQueueLength=8;
 float GetClimbRate(float alti){
-  static float climbRateQueue[5];
+  static float climbRateQueue[ClimbRateQueueLength];
   static float lastAlti=alti;
   static byte cnt=0;
   static float myClimbRate=0;
   myClimbRate -= climbRateQueue[cnt]; // overwrite the oldest value in the queue
   climbRateQueue[cnt]=alti-lastAlti; // store the current height difference
   cnt+=1;
-  if (cnt ==5)cnt=0;
+  if (cnt ==ClimbRateQueueLength)cnt=0;
   myClimbRate += alti-lastAlti; // add the current height difference
   lastAlti=alti;
-  return(myClimbRate*8);
+  return(myClimbRate*( (1000/calcIntervallMS)/ClimbRateQueueLength));  // if this func ist being called <N> times a second than the multiplier must be <N>/queuelen
+//  return(myClimbRate*5);  // if this func ist being called <N> times a second than the multiplier must be <N>/queuelen
 }
 
 /**********************************************************/
@@ -500,8 +568,15 @@ long getPressure()
   float TEMP;
   int64_t OFF, SENS;
 
-  D1 = getData(0x48, 10);
+//  D1 = getData(0x48, 10); //OSR=4096 0.012 mbar precsision
+  D1 = getData(0x48, 9); //OSR=4096 0.012 mbar precsision
   D2 = getData(0x50, 1);
+
+//  D1 = getData(0x46, 5); //OSR=2048 0.018 mbar precision
+//  D2 = getData(0x56, 1);
+
+//  D1 = getData(0x44, 3); //OSR=1024 0.027 mbar precision
+//  D2 = getData(0x54, 1);
 
   dT = D2 - ((long)calibrationData[5] << 8);
   TEMP = (2000 + (((int64_t)dT * (int64_t)calibrationData[6]) >> 23)) / (float)100;
