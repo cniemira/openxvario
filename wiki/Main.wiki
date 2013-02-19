@@ -37,6 +37,11 @@ the following can be transmitted:
 
 WARNING: Do NOT attempt to directly connect the 6 available cell voltages to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the Arduino pin limits (keep the smoke in!)
 
+= Building your own =
+visit the BuildInstructions page to learn how to make an openXvario yourself.
+= Configuring open9x =
+visit the ConfigureVarioSettingsInOpen9x to learnm how to set the configuration in open9x
+
 == Remote control your openXvario ==
 You can (optionaly) use a servo channel to control the sensitivity of the vario from your transmitter. Just map a potentiometer from your 9X to the channel used to power up the openXvario and include the option in the configuration section of the source code. (see CompileOptions for details on how to enable this feature)
 
@@ -50,6 +55,3 @@ The voltage calibration code ist from here: http://provideyourown.com/2012/secre
 The kalman filter is based on the information from this site: http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
 
 and many thanks to bertrand for the changes to open 9x!
-
-= Building your own =
-visit the BuildInstructions page to learn how to make an openXvario yourself.
