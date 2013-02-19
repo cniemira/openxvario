@@ -32,4 +32,12 @@ The range here is -2..1 and -1..+2m/s in 0.1m/s steps These inner values will be
 
 Play around with these to create a vario tone to your liking.
 
+===Configuring your telemetry display===
 https://openxvario.googlecode.com/svn/wiki/images/Telemetry3.png
+
+
+configure your telemetry screens to your liking..
+
+=Setting up a switch to turn on the vario sound=
+  * setup a switch to turn on/off the vario tone generation
+the remaining setup fot the switch + telemetry screen is described in the open9x documentation
