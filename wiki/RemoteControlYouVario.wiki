@@ -2,7 +2,7 @@
 
 = Introduction =
 
-The openXvario sensitivity can be controlled via a channel from your receiver even if you do not have a spare channel left!
+The openXvario sensitivity can be remotly controlled via a free channel or even if you do not have a spare channel left!
 
 = Details =
 by connecting the openXvario to a servo channel you can use it´s value to remotely adjust your variometer sensitivity. 
