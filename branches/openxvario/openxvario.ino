@@ -378,7 +378,8 @@ void loop()
 #ifdef PIN_PPM   
     int ppm= pulseIn(PIN_PPM, HIGH, 20000); 
     #ifdef PPM_TO_KALMAN_R
-       kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
+      if (ppm>0)kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
+      else kalman_r=KALMAN_R;
     #endif
 #endif
   }
