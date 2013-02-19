@@ -43,7 +43,7 @@ visit the BuildInstructions page to learn how to make an openXvario yourself.
 visit the ConfigureVarioSettingsInOpen9x to learnm how to set the configuration in open9x
 
 == Remote control your openXvario ==
-You can (optionaly) use a servo channel to control the sensitivity of the vario from your transmitter. Just map a potentiometer from your 9X to the channel used to power up the openXvario and include the option in the configuration section of the source code. (see CompileOptions for details on how to enable this feature)
+You can use a servo channel to control the sensitivity of the vario from your transmitter. see the RemoteControlYouVario page for details
 
 == Credits ==
 I got the idea and a lot of code for this project from this thread: http://www.rcgroups.com/forums/showthread.php?t=1749208
