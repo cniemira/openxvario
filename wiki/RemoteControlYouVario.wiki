@@ -1,0 +1,42 @@
+#summary Remote Control the openXvario Sensitivity without loosing a channel!
+
+= Introduction =
+
+The openXvario sensitivity can be controlled via a channel from your receiver even if you do not have a spare channel left!
+
+= Details =
+by connecting the openXvario to a servo channel you can use it´s value to remotely adjust your variometer sensitivity. 
+You should enable the
+{{{
+  #define SEND_KalmanRasT2 
+}}} 
+option to get the numeric value displayed in the T2 field. 
+
+there are 2 possible ways of using this remote control option:
+== Method 1: Remote Control with a dedicated Servo channel ==
+just connect the ppm signal of one of your receivers free servo ports to the pin defined in the following line (default=2).
+{{{
+#define PIN_PPM 2
+}}}
+
+Configure a free potentiometer in your 9x to send a its value to this channel and you´re done.
+To use it, after turning on the openXvario and your transmitter you once have to turn your potentiometer to the min and max positions, as the routine in openXvario has to learn the range before it can use it properly.
+
+== Method 2: Remote Control *without* a dedicated Servo channel ==
+as receiver channels are sometimes limited, here is another way of remote controlling your variometer´s sensitivity. It can of course not be controlled in flight, but it is a feasable solution to quickly change the sensitivity on the field, and saving the value permanently.
+
+You have to make your ppm cable detachable. E.g. by using a 1pin male/female header and some small shrink tube.
+connect the openXvario via an ordinary servo Y cable to one of your allready occupied channels (take something like the rudder, do NOT take throttle).
+Now if you connect the ppm signal to this servo channel, you can use it to change the sensitivity to your desired value. Just move thestick/pot of this channel once to its min and max position. Now you can use this channel´s stick/potentiometer in order to set the sensitivity value to the value of your liking, then disconnect the PPM signal BEFORE powering down the openXvario.
+The vario will detect this and visually indicate this in 2 different ways:
+
+1. on the vario the LED will blink in the following pattern:
+  _1 second ON. 3 short flashes and again 1 second on_
+
+2. on the transmitter 
+the dist field will display "9999" 
+then the actual value being stored in its eeprom 
+and then again "9999"
+
+the actual sensitivity value has now been stored in the eeprom of the openXvario. The next time you turn it on, the same value will be used again.
+You can repeat this procedure as often as you like (after approx. 1 million times the eeprom might be worn out... but who wants to do this 1 million times? :D )
