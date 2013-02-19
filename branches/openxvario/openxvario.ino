@@ -98,6 +98,7 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 #define PPM_TO_KALMAN_R    // PPM Signal will be used to control the KALMAN_R (Sensor Noise) parameter
 #define KALMAN_R_MIN 1     // 1    the min value for KALMAN_R
 #define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
+
 /*****************************************************************************************************/
 /*****************************************************************************************************/
 /*****************************************************************************************************/
@@ -118,8 +119,9 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
+#include <EEPROM.h> //Needed to access the eeprom read write functions
 
-//#define DEBUG
+#define DEBUG
 
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
@@ -193,6 +195,8 @@ double kalman_r= KALMAN_R; //measurement noise covariance
 /********************************************************************************** Setup() */
 void setup()
 {
+  
+ 
 #ifdef ANALOG_CLIMB_RATE
   analogWrite(PIN_AnalogClimbRate,255/5*1.6); // initialize the output pin 
 #endif
@@ -230,6 +234,17 @@ void setup()
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
 
+  
+#ifdef PIN_PPM
+  //eepromIntWrite(0,0); // just for testing purposes...
+  // Read Kalman_r from eeprom
+  kalman_r=eepromIntRead(0);
+  if (kalman_r==0){
+    // eeprom value is invalid, so write the default to the eeprom once
+    kalman_r=KALMAN_R;
+    eepromIntWrite(0,(unsigned int)kalman_r);
+  }
+#endif 
   // Setup the ms5611 Sensor and read the calibration Data
   setupSensor();
  
@@ -286,8 +301,9 @@ void loop()
     Serial.print(" AveragePressure:");    Serial.print(avgPressure,DEC);
     Serial.print(" Altitude:");      Serial.print(alt,DEC);
     Serial.print(" ClimbRate:");      Serial.print(climbRate,DEC);
+    Serial.print(" K_R:");    Serial.print(kalman_r);
     Serial.print(" Temp:");    Serial.print(Temp,DEC);
-    Serial.print(" VCC:"); readVccMv();
+    Serial.print(" VCC:"); Serial.print(readVccMv());
     Serial.println();
 #endif
 
@@ -376,11 +392,7 @@ void loop()
 
     // Read the ppm Signal from receiver
 #ifdef PIN_PPM   
-    int ppm= pulseIn(PIN_PPM, HIGH, 20000); 
-    #ifdef PPM_TO_KALMAN_R
-      if (ppm>0)kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
-      else kalman_r=KALMAN_R;
-    #endif
+  ProcessPPMSignal();
 #endif
   }
   /*
@@ -409,6 +421,89 @@ void SendAnalogClimbRate(long cr)
   analogWrite(PIN_AnalogClimbRate,(int)outValue);
 }
 #endif
+
+
+
+
+
+/**********************************************************/
+/* ProcessPPMSignal => read PPM signal from receiver and  */
+/*   use i´s value to adjust sensitivity                  */
+/**********************************************************/
+void ProcessPPMSignal(){
+   static boolean SignalPresent= false;
+   unsigned long ppm= ReadPPM();
+   static unsigned int ppm_min=65535;
+   static unsigned int ppm_max=0;
+
+   
+#ifdef PPM_TO_KALMAN_R
+      if (ppm>0){
+         SignalPresent=true;// Signal is currently presen!
+         if (ppm<ppm_min)ppm_min=ppm;
+         if (ppm>ppm_max)ppm_max=ppm;
+         
+         //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
+         kalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN,KALMAN_R_MAX);
+
+      }else{
+         if (SignalPresent == true){
+            // The PPM signal has just been removed! 
+            // debounce:
+            delay(100);
+            ppm= ReadPPM();
+            if (ppm ==0){ // Still no signal after waiting 50ms
+                SignalPresent=false;
+//Serial.print("PPM wurde entfernt!!!!=");Serial.println(ppm);
+
+               // Store the last known value from the ppm signal to the eeprom
+               eepromIntWrite(0,kalman_r); // just for testing purposes...
+               // send a Signal to the user that the value has been stored
+               // Blink LED: 1 Second on. 3time on for 200 ms, 1 second on
+               SendGPSDist(uint16_t(9999));
+               ledOn() ;delay(1000);
+               SendGPSDist(uint16_t(kalman_r));
+               ledOff();delay(200);
+               ledOn() ;delay(200);
+               ledOff();delay(200);
+               ledOn() ;delay(200);
+               ledOff();delay(200);
+               ledOn() ;delay(200);
+               ledOff();delay(200);
+               SendGPSDist(uint16_t(9999));
+               ledOn() ;delay(1000);
+               ledOff();
+               ppm_min=65535;
+               ppm_max=0;
+            }
+         }
+      }
+#endif
+}
+// ReadPPM - Read ppm signal and detect if there is no signal
+unsigned long ReadPPM(){
+  unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the ppm value
+  Serial.print("PPM=");Serial.println(ppm);
+  if ((ppm>5000)or (ppm<500))ppm=0; // no signal!
+ return ppm;
+}
+
+// Write an unsigned int to eeprom
+void eepromIntWrite(int adr, unsigned int value){
+    //Serial.print("Writing to eeprom:");Serial.println(value);
+	byte lowB = ((value >> 0) & 0xFF);
+	byte highB = ((value >> 8) & 0xFF);
+	EEPROM.write(adr, lowB);
+	EEPROM.write(adr+ 1, highB);
+}
+
+// Read unsigned integer from the eeprom
+unsigned int eepromIntRead(int adr){
+	byte lowB = EEPROM.read(adr);
+	byte highB = EEPROM.read(adr + 1);
+  	//Serial.print("Read from eeprom:");Serial.println(lowB + (highB << 8));
+        return lowB + (highB << 8);
+}
 
 /*******************************************************************************/
 /* GetClimbRate => calculate the current climbRate                             */
