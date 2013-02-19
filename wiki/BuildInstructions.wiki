@@ -82,7 +82,7 @@ If yours hasn´t got those male headers, just plug some header pins into the fem
 
 ==Configuring open9x==
 
-visit the ConfigureVarioSettingsInOpen9x to learnm how to set the configuration in open9x 
+visit the ConfigureVarioSettingsInOpen9x to learn how to set the configuration in open9x 
 
 
 Have fun,
