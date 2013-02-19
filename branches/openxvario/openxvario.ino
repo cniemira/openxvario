@@ -3,7 +3,7 @@
 
 // GND and +5V from a free Servo Port of the FrSky receiver goes to the Arduino. 
 // (Voltage will be measured and transfered to open9x)
-
+// The ppm Signal from that servo plug to pin 2
 // The MS5611 has to be connected this way:
 // MS5611 SCLK => A5
 // MS5611 SDA_I => A4
@@ -23,10 +23,11 @@
 //#define PIN_VoltageCell6 7    //  Pin for measuring Voltage of cell 6 ( Analog In Pin! )
 
 // Choose if the led should be used for indicationg lift.
-#define LED_ClimbBlink 5  // Blink when climbRate > 0.10cm
+#define LED_ClimbBlink 5  // Blink when climbRate > 0.05cm. The numeric value can be changed to a different cm value
 
 #define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
-                           // in an absolute height diplay. (that you can still set to 0 by pressing [MENU] in the telem.screens
+                           // in an absolute height display in open9x . (You can still change to a relative display 
+                           // by pressing [MENU] in the telem.screens
                            // If not defined, open9x will use the first transmitted altitude as an internal offset, 
                            // which results in an initial height of 0m
 
@@ -34,21 +35,15 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
                            // module via a solder pin or fixed ...)
 
 //************************** Which data to send in which field *****************************/
-// uncomment to as you like, but only one value per target field!
+// The standard fields:
 #define SEND_Alt        // Send alt in the altitude field
 #define SEND_VERT_SPEED // Send vertical speed (climbrate) as id 0x38
 #define SEND_VREF       // Voltage Reference as cell0
 #define SEND_VFAS_NEW   // Voltage as VFAS 
-#define SEND_TEMP_T1    // MS5611 temperature as Temp1
-
 //************************** Which data to send in the T1 (temperature 1) Field? (choose only one) 
-//#define SEND_TEMP_T1      // MS5611 temperature as Temp1
+//#define SEND_TEMP_T1         // MS5611 temperature as Temp1
 #define SEND_PressureAsT1 9000 // pressure in 1/10th of mBar in T1 Field subtracted by the number in the define statment. 
-                              // e.g. 950mbar => 9500 -offset of 9000 => 500
-//************************** Which data to send in the RPM Field? (choose only one) (unprecise field! resolution is in steps of 30RPM!)
-//#define SEND_AltAsRPM   // Altitude in RPM ;-)
-//#define SEND_KalmanRasRPM // Kalman Param R in RPM
-//#define SEND_PressureAsRPM  // pressure in RPM Field
+                               // e.g. 950mbar => 9500 -offset of 9000 => 500 in display
 
 //************************** Which data to send in the DIST Field? (choose only one)
 #define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will be subtracted from the actual height for higher display precision.
@@ -60,26 +55,26 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 //************************** Which data to send in the T2 (temperature 2) Field? (choose only one)
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
 #define SEND_KalmanRasT2 // Kalman Param R in Temp2
-//************************** Data Filtering => kalman Filter Parameters *********************/
+
+//************************** Which data to send in the RPM Field? (choose only one) (unprecise field! resolution is in steps of 30RPM!)
+//#define SEND_AltAsRPM      // Altitude in RPM ;-)
+//#define SEND_KalmanRasRPM  // Kalman Param R in RPM
+//#define SEND_PressureAsRPM // pressure in RPM Field
+
+//************************** Sensitivity / Data Filtering / kalman Filter Parameters *********************/
 // The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can be adjusted by 
-// changing the value Q (process Noise) and R (Sensor Noise) best pactise is to just change R, as both
+// changing the value Q (process Noise) and R (Sensor Noise). Best pactise is to only change R, as both
 // parametrers influence each other. (less Q requires more R to compensate and vica versa)
-#define KALMAN_Q 0.05 // 0.05 do not tamper unless you are looking for adventure ;-)
-#define KALMAN_R 110//  50 =fast but more error  (good for sensor testing...but quite some noise)
-                    // 100 =medium speed and less false indicationa (nice medium setting with 
-                    //      a silence window (indoor)of at -0.2 to +0.2)
-                    // 200 =conservative setting ;-)
-                    // 500=still useable maybe for a slow flyer?
-                    // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
-                    //      the height of your furniture with this setting. but do not use it for flying ;-)
-                    // .. everything inbetween in relation to this.
-//#define KALMANPOTI  //if this is defined, 2x 4,7k potentiometer can be attached to A2 and A3 to directly 
-                    // adjust the following values:
-                    // q = process noise (send to transmitter as T2 (q multiplied by 1000)
-                    // r = sensor noise (send to transmitter as DIST)
-//#define KALMANDUMP  // for filter process visualization. Output the measured and esitmated pressure 
-                    // via RS232. then this data can be visualized e.g. using processing.
-                    // you probably do not need to define this
+#define KALMAN_Q 0.05 // 0.05 do not tamper with this value unless you are looking for adventure ;-)
+#define KALMAN_R 110  // default:110   change this value if you want to adjust the sensitivity!
+                      //  50 = fast but more errors (good for sensor testing...but quite a lot of noise)
+                      // 100 = medium speed and less false indications (nice medium setting with 
+                      //       a silence window (indoor)of -0.2 to +0.2)
+                      // 200 = conservative setting ;-)
+                      // 500 = still useable maybe for a slow flyer?
+                      // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
+                      //      the height of your furniture with this setting. but do not use it for flying ;-)
+                      // .. everything inbetween in relation to these values.
                     
 //************************** Analog Output of vertical speed (to A1 or A2 on receiver *********************/
 // Do NOT use this if you have an RS232 Port on your receiver. (that one produces better results!)
@@ -101,12 +96,17 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 
 // This makes the most sense.. use the ppm signal to control theopenXvario sensitivity
 #define PPM_TO_KALMAN_R    // PPM Signal will be used to control the KALMAN_R (Sensor Noise) parameter
-#define KALMAN_R_MIN 1     // the min value for KALMAN_R
-#define KALMAN_R_MAX 1000  // the max value for KALMAN_R
+#define KALMAN_R_MIN 1     // 1    the min value for KALMAN_R
+#define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
+/*****************************************************************************************************/
+/*****************************************************************************************************/
+/*****************************************************************************************************/
 /*****************************************************************************************************/
 //                No changes below this line unless you know what you are doing                       /
 /*****************************************************************************************************/
-
+/*****************************************************************************************************/
+/*****************************************************************************************************/
+/*****************************************************************************************************/
 
 
 
@@ -125,6 +125,15 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
 // we do not need the RX so we set it to 0
 SoftwareSerial mySerial(0, PIN_SerialTX,true); // RX, TX
+
+
+//#define KALMANPOTI  //if this is defined, 2x 4,7k potentiometer can be attached to A2 and A3 to directly 
+                    // adjust the following values:
+                    // q = process noise (send to transmitter as T2 (q multiplied by 1000)
+                    // r = sensor noise (send to transmitter as DIST)
+//#define KALMANDUMP  // for filter process visualization. Output the measured and esitmated pressure 
+                    // via RS232. then this data can be visualized e.g. using processing.
+                    // you probably do not need to define this
 
 #define FRSKY_USERDATA_GPS_ALT_B    0x01
 #define FRSKY_USERDATA_TEMP1        0x02
