@@ -59,6 +59,8 @@ Move the rudder stick once the full way from left to right. the oXv will learn t
 Now change the sensitivity by moving the rudder stick to the desired position.
 
 ===5. End of Programming mode===
-As soon as the countdown in the T1 field reaches 0 the new senitivity will be written to the eeprom. The T1 and Dist field now display whichever fields you configured for them. enjoy flying.
+As soon as the countdown in the T1 field reaches 0 the new senitivity will be written to the eeprom the end of the programming mode will be signalled via another flash sequence of the LED and by sending 9999, the sensitivity value and again 9999 to the dist field.
 
-if you want to re-enter programming mode turn off/on the power or press reset followed by moving the rudder stick to the left
+The T1 and Dist field now display whichever fields you configured for them. enjoy flying.
+
+if you want to reenter programming mode turn off/on the power or press reset followed by moving the rudder stick to the left
