@@ -22,21 +22,35 @@ just connect the ppm signal of one of your receivers free servo ports to the pin
 Configure a free potentiometer in your 9x to send a its value to this channel and you´re done.
 To use it, after turning on the openXvario and your transmitter you once have to turn your potentiometer to the min and max positions, as the routine in openXvario has to learn the range before it can use it properly.
 
-== Method 2: Remote Control *without* a dedicated Servo channel ==
-as receiver channels are sometimes limited, here is another way of remote controlling your variometer´s sensitivity. It can of course not be controlled in flight, but it is a feasable solution to quickly change the sensitivity on the field, and saving the value permanently.
+== Method 2: programming mode ==
 
-You have to make your ppm cable detachable. E.g. by using a 1pin male/female header and some small shrink tube.
-connect the openXvario via an ordinary servo Y cable to one of your allready occupied channels (take something like the rudder, do NOT take throttle).
-Now if you connect the ppm signal to this servo channel, you can use it to change the sensitivity to your desired value. Just move thestick/pot of this channel once to its min and max position. Now you can use this channel´s stick/potentiometer in order to set the sensitivity value to the value of your liking, then disconnect the PPM signal BEFORE powering down the openXvario.
-The vario will detect this and visually indicate this in 2 different ways:
+I implemented the new programming mode. This is how it works.
 
-1. on the vario the LED will blink in the following pattern:
-  _1 second ON. 3 short flashes and again 1 second on_
+===1.Starting the programming mode===
+Turn on Receiver and open your telemetry data screen
+You should enable the following additional fields on it:
+==> T1 (will be used for the countdown timer)
+==> T2 (will be used to display the sensitivity value)
+==> DIST (will be used to indicate the start/end of programming mode)
 
-2. on the transmitter 
-the dist field will display "9999" 
-then the actual value being stored in its eeprom 
-and then again "9999"
+===2. Turn on your power for your plane===
+The openXvario should be connected to the same port as the rudder servo.
 
-the actual sensitivity value has now been stored in the eeprom of the openXvario. The next time you turn it on, the same value will be used again.
-You can repeat this procedure as often as you like (after approx. 1 million times the eeprom might be worn out... but who wants to do this 1 million times? :D )
+===3. Enter Programming mode===
+Move the rudder stick to the left in the next 5 seconds after power on.
+==> the oXv will detect this and blink the led on the arduino in this pattern:
+
+1sec ON, 3 Flashes 100ms, 1sec ON
+
+4. In the Programming mode:
+Now for the next 30 seconds (configurable) the oXv will be in programming mode.
+==> The remaining time in programming mode will be displayed as a countdown on your open9X in the T1 field.
+==> The T1 Field will now display the current Sensitivity setting.
+
+Move the rudder stick once the full way from left to right. the oXv will learn the range by this.
+Now change the sensitivity by moving the rudder stick to the desired position.
+
+===5. End of Programming mode===
+As soon as the countdown in the T1 field reaches 0 the new senitivity will be written to the eeprom. The T1 and Dist field now display whichever fields you configured for them. enjoy flying.
+
+if you want to re-enter programming mode turn off/on the power or press reset followed by moving the rudder stick to the left
