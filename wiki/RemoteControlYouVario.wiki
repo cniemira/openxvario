@@ -12,6 +12,11 @@ You should enable the
 }}} 
 option to get the numeric value displayed in the T2 field. 
 
+then enable the following define to choose the permant use of a ppm signal to adjust the sensitivity.
+{{{
+#define PPM_AllwaysUsed   
+}}}
+
 there are 2 possible ways of using this remote control option:
 == Method 1: Remote Control with a dedicated Servo channel ==
 just connect the ppm signal of one of your receivers free servo ports to the pin defined in the following line (default=2).
@@ -26,6 +31,9 @@ To use it, after turning on the openXvario and your transmitter you once have to
 
 I implemented the new programming mode. This is how it works.
 
+{{{
+#define PPM_AllwaysUsed   
+}}}
 ===1.Starting the programming mode===
 Turn on Receiver and open your telemetry data screen
 You should enable the following additional fields on it:
