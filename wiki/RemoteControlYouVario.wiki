@@ -8,7 +8,7 @@ The openXvario sensitivity can be remotly controlled via a free channel or even 
 by connecting the openXvario to a servo channel you can use it´s value to remotely adjust your variometer sensitivity. 
 You should enable the
 {{{
-  #define SEND_KalmanRasT2 
+#define SEND_KalmanRasT2 
 }}} 
 option to get the numeric value displayed in the T2 field. 
 
