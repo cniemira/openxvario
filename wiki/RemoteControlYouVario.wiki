@@ -45,10 +45,14 @@ You should enable the following additional fields on it:
 The openXvario should be connected to the same port as the rudder servo.
 
 ===3. Enter Programming mode===
-Move the rudder stick to the left in the next 5 seconds after power on.
-==> the oXv will detect this and blink the led on the arduino in this pattern:
+the T1 and the DIST field will count down for 5 seconds. During this time you can move the rudder stick (or whichever channel you are connected to) to the left to enter the programming mode.
+==> the oXv will detect this and indicate the start of the programming mode to the pilot in 2 ways:
 
-1sec ON, 3 Flashes 100ms, 1sec ON
+on the openXvario: the led will blink in this pattern: 
+1 sec ON, 3 Flashes 100ms, 1 sec ON
+
+on the transmitter in the telemetry display screen:
+in the DIST field: 1111, the last stored sensitivity value and again 1111
 
 4. In the Programming mode:
 Now for the next 30 seconds (configurable) the oXv will be in programming mode.
