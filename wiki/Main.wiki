@@ -7,11 +7,7 @@ The openXvario is my contribution to the 9X community.
 It is designed to work together with the open source firmware open9x for the turnigy 9x transmitter. but with little modifications it should work with any Fr-Sky telemetry enabled system.
 
 Discussion about this project: http://9xforums.com/forum/viewforum.php?f=86
-https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
 
-https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
-
-Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
 == Arduino Variometer / Altimeter over FR-Sky telemetry for open9x ==
 
 === Sensor data send to open9x ===
@@ -55,3 +51,10 @@ The voltage calibration code ist from here: http://provideyourown.com/2012/secre
 The kalman filter is based on the information from this site: http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
 
 and many thanks to bertrand for the changes to open 9x!
+
+
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
+
+https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
+
+Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
