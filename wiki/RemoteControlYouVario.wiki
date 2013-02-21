@@ -37,15 +37,20 @@ I implemented the new programming mode. This is how it works.
 ===1.Starting the programming mode===
 Turn on Receiver and open your telemetry data screen
 You should enable the following additional fields on it:
+
 ==> T1 (will be used for the countdown timer)
+
 ==> T2 (will be used to display the sensitivity value)
+
 ==> DIST (will be used to indicate the start/end of programming mode)
+
 
 ===2. Turn on your power for your plane===
 The openXvario should be connected to the same port as the rudder servo.
 
 ===3. Enter Programming mode===
 the T1 and the DIST field will count down for 5 seconds and a led on the openXvario will blink every 500ms. During these 5 seconds you can move the rudder stick (or whichever channel you are connected to) to the left to enter the programming mode.
+
 ==> the oXv will detect this and indicate the start of the programming mode to the pilot in 2 ways:
 
 on the openXvario: the led will blink in this pattern: 
@@ -56,7 +61,9 @@ in the DIST field: 1111, the last stored sensitivity value and again 1111
 
 4. In the Programming mode:
 Now for the next 30 seconds (configurable) the oXv will be in programming mode.
+
 ==> The remaining time in programming mode will be displayed as a countdown on your open9X in the T1 field.
+
 ==> The T1 Field will now display the current Sensitivity setting.
 
 Move the rudder stick once the full way from left to right. the oXv will learn the range by this.
