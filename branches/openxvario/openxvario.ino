@@ -1,27 +1,26 @@
 // openxvario http://code.google.com/p/openxvario/
 // started by R.Schloßhan 
 
-// GND and +5V from a free Servo Port of the FrSky receiver goes to the Arduino. 
-// (Voltage will be measured and transfered to open9x)
-// The ppm Signal from that servo plug to pin 2
-// The MS5611 has to be connected this way:
-// MS5611 SCLK => A5
-// MS5611 SDA_I => A4
-// MS5611 VCC => +5V (depending on the MS5611 Module  you use, you might have to use 3.3V 
-//                    instead or add in a resistor or voltage regulator)
-// MS5611 GnD => GND
- 
-#define PIN_SerialTX 4        // 2  the pin to transmit the serial data to the frsky telemetry enabled receiver
-#define PIN_ClimbLed 13       // 13 the led used to indicate lift ( led lights up above +0.10m/s)
 
-// Define a voltagepin if you want to transmit the value to open9x:
-//#define PIN_VoltageCell1 0    //  Pin for measuring Voltage of cell 1 ( Analog In Pin! )
-//#define PIN_VoltageCell2 1    //  Pin for measuring Voltage of cell 2 ( Analog In Pin! )
-//#define PIN_VoltageCell3 2    //  Pin for measuring Voltage of cell 3 ( Analog In Pin! )
-//#define PIN_VoltageCell4 3    //  Pin for measuring Voltage of cell 4 ( Analog In Pin! )
-//#define PIN_VoltageCell5 6    //  Pin for measuring Voltage of cell 5 ( Analog In Pin! )
-//#define PIN_VoltageCell6 7    //  Pin for measuring Voltage of cell 6 ( Analog In Pin! )
+/***************************************************************************************/
+/* Remote controlling the sensitivity using a servo port on your receiver              */
+/* ==> choose 0 to 1 option! You need to have the PIN_PPM defined as well              */
+/***************************************************************************************/
+//#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
+                           // Choose this if you want to use a dedicated channel just for 
+                           // adjusting the sensitivity
 
+#define PPM_ProgrammingMode // PPM Signal will only used if programming mode is initiated
+                            // if this option is enabled, the vario will go into programming
+                            // mode on startup if the ppm value is in a predefined range
+                            // on powerup (e.g. rudder stick full left)
+                            // the pulse length defining this "activation window"
+                            // can be defined using the PPM_ProgrammingMode_minppm/maxppm values
+
+/***************************************************************************************/
+/* Other Configuration Options  => various different values to take influence on       */
+/*                    various stuff. Normaly you do not have to change any of these    */
+/***************************************************************************************/
 // Choose if the led should be used for indicationg lift.
 #define LED_ClimbBlink 5  // Blink when climbRate > 0.05cm. The numeric value can be changed to a different cm value
 
@@ -31,42 +30,81 @@
                            // If not defined, open9x will use the first transmitted altitude as an internal offset, 
                            // which results in an initial height of 0m
 
-const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board ( normally 0x76 or 0x77 configured on the MS5611
-                           // module via a solder pin or fixed ...)
+/***************************************************************************************/
+/* Which data to send in which telemetry field                                         */
+/* ==> choose freely one value per Telemetry field                                     */
+/***************************************************************************************/
+//**************** the DIST field (GPS Distance) (choose only one)**********************/
+#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
+                           // be subtracted from the actual height for higher display precision.
+                           // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7)
+                           // if we subtract 300 display will be 156 78
+                           // This is due to the fact that the highest precission in this field
+                           //  will only be transmitted up to an altitude of 327.68 m
+//#define SEND_SensitivityAsDist // sensitivity in DIST
+//#define SEND_PressureAsDIST    // pressure in DIST field
 
-//************************** Which data to send in which field *****************************/
-// The standard fields:
-#define SEND_Alt        // Send alt in the altitude field
-#define SEND_VERT_SPEED // Send vertical speed (climbrate) as id 0x38
-#define SEND_VREF       // Voltage Reference as cell0
-#define SEND_VFAS_NEW   // Voltage as VFAS 
-//************************** Which data to send in the T1 (temperature 1) Field? (choose only one) 
-//#define SEND_TEMP_T1         // MS5611 temperature as Temp1
-#define SEND_PressureAsT1 9000 // pressure in 1/10th of mBar in T1 Field subtracted by the number in the define statment. 
+//************************** the T1 (temperature 1) Field? (choose only one) **********/
+#define SEND_TEMP_T1         // MS5611 temperature as Temp1
+//#define SEND_PressureAsT1 9000 // pressure in 1/10th of mBar in T1 Field subtracted by
+                               // the number in the define statment. 
                                // e.g. 950mbar => 9500 -offset of 9000 => 500 in display
 
-//************************** Which data to send in the DIST Field? (choose only one)
-#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will be subtracted from the actual height for higher display precision.
-                           // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7) if we subtract 300 display will be 156 78
-                           // This is due to the fact that the highest precission in this field will only be transmitted up to an altitude of 327.68 m
-//#define SEND_KalmanRasDist // Kalman Param R in DIST
-//#define SEND_PressureAsDIST // pressure in DIST field
-
-//************************** Which data to send in the T2 (temperature 2) Field? (choose only one)
+//************************** the T2 (temperature 2) Field? (choose only one) **********/
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
-#define SEND_KalmanRasT2 // Kalman Param R in Temp2
+#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
 
-//************************** Which data to send in the RPM Field? (choose only one) (unprecise field! resolution is in steps of 30RPM!)
+//************************** the RPM Field? (choose only one) *************************/
+//(unprecise field! resolution is in steps of 30RPM!)
 //#define SEND_AltAsRPM      // Altitude in RPM ;-)
-//#define SEND_KalmanRasRPM  // Kalman Param R in RPM
+//#define SEND_SensitivityAsRPM  // Kalman Param R in RPM
 //#define SEND_PressureAsRPM // pressure in RPM Field
 
-//************************** Sensitivity / Data Filtering / kalman Filter Parameters *********************/
-// The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can be adjusted by 
-// changing the value Q (process Noise) and R (Sensor Noise). Best pactise is to only change R, as both
-// parametrers influence each other. (less Q requires more R to compensate and vica versa)
+
+/***************************************************************************************/
+/* The standard data being send to the trasnmitter                                     */
+/***************************************************************************************/
+#define SEND_Alt        // Send alt in the altitude field
+#define SEND_VERT_SPEED // Send vertical speed (climbrate) as id 0x38
+// #define SEND_VREF    // Voltage Reference as cell0
+#define SEND_VFAS_NEW   // Voltage as VFAS 
+
+/***************************************************************************************/
+/* Analog IN Pins  => 6 free optional input to be transfered in the cell 1 to cell 6   */
+/*                    fields. uncomment any line to enable its transmission            */
+/***************************************************************************************/
+// Define a voltagepin if you want to transmit the value to open9x:
+//#define PIN_VoltageCell1 0    //  Pin for measuring Voltage of cell 1 ( Analog In Pin! )
+//#define PIN_VoltageCell2 1    //  Pin for measuring Voltage of cell 2 ( Analog In Pin! )
+//#define PIN_VoltageCell3 2    //  Pin for measuring Voltage of cell 3 ( Analog In Pin! )
+//#define PIN_VoltageCell4 3    //  Pin for measuring Voltage of cell 4 ( Analog In Pin! )
+//#define PIN_VoltageCell5 6    //  Pin for measuring Voltage of cell 5 ( Analog In Pin! )
+//#define PIN_VoltageCell6 7    //  Pin for measuring Voltage of cell 6 ( Analog In Pin! )
+
+/***************************************************************************************/
+/* Hardware settings=>Here you can change which pins will be used for which connection */
+/*                    and the I2C address of the connected MS5611 module               */
+/*                    Normaly you do not have to change any of these                   */
+/***************************************************************************************/
+#define PIN_SerialTX 4        // 4  the pin to transmit the serial data to the frsky telemetry enabled receiver
+#define PIN_ClimbLed 13       // 13 the led used to indicate lift ( led lights up above +0.10m/s)
+#define PIN_AnalogClimbRate 3 // 3 the pin used to optionally write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
+#define PIN_PPM 2             // default: 2 the pin to read the PPM Signal on coming from the receiver.           
+                              // you can uncomment this line if you want to completly disable the remote control functionality
+const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout board 
+                              // (normally 0x76 or 0x77 configured on the MS5611 module 
+                              // via a solder pin or fixed)
+
+/***************************************************************************************/
+/* sensitivity / data filtering / Kalman filter parameters                             */
+/* The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can */
+/* be adjusted by changing the value Q (process Noise) and R (Sensor Noise).           */
+/* Best pactise is to only change R, as both parametrers influence each other.         */
+/* (less Q requires more R to compensate and vica versa)                               */
+/***************************************************************************************/
 #define KALMAN_Q 0.05 // 0.05 do not tamper with this value unless you are looking for adventure ;-)
-#define KALMAN_R 110  // default:110   change this value if you want to adjust the sensitivity!
+#define KALMAN_R 110  // default:110   change this value if you want to adjust the default sensitivity!
+                      // this will only be used if PIN_PPM is NOT defined
                       //  50 = fast but more errors (good for sensor testing...but quite a lot of noise)
                       // 100 = medium speed and less false indications (nice medium setting with 
                       //       a silence window (indoor)of -0.2 to +0.2)
@@ -75,29 +113,32 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
                       // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
                       //      the height of your furniture with this setting. but do not use it for flying ;-)
                       // .. everything inbetween in relation to these values.
-                    
-//************************** Analog Output of vertical speed (to A1 or A2 on receiver *********************/
-// Do NOT use this if you have an RS232 Port on your receiver. (that one produces better results!)
-// if ANALOG_CLIMB_RATE has been defined you can connect Arduino Pin 3 to a 1kohm resistor. 
-// the other end of that resistor will be connected to to A1 or A2 of FrSky Receiver ( e.g. D8R-II ) 
-// and to a a 22uF electrolyte Capacitor (whichs other end goes to ground) 
-// This will filter the PWM Output to a usable voltage for the open9x Vario code.
-//#define ANALOG_CLIMB_RATE   // If defined, the clib rate will be written as PWM Signal to the defined port
-#define OutputClimbRateMin -3 // -3this values eqaly 0V voltage to the receiver
-#define OutputClimbRateMax  3 // 3 this values eqaly 3.2V voltage to the receiver
-#define PIN_AnalogClimbRate 3 // 3 the pin used to write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 
-//***************************************** PPM Signal from receiver **************************************/
-// if you have the ppm signal from one of your channeld on the receiver connected to your arduino,
-// you can use the value of that channel to "remote control" your openXvario.
-// just uncomment the following line and set the number to the pin of your arduino that you connect the signal to.
-// then choose which parameter you want to control by uncommenting one of the options with their min/max values
-#define PIN_PPM 2          // default: 2 the pin to read the PPM Signal on coming from the receiver.           
+/***************************************************************************************/
+/* Optional analog output of vertical speed (to A1 or A2 on receiver                   */
+/* In case you want to connect the vario to a receiver that only has A1/2  and no RS232*/
+/* additional Hardware required! read the WiKi if you want to use this                 */
+/***************************************************************************************/
+//#define ANALOG_CLIMB_RATE   // If defined, the vertical speed will be written as 
+                              // PWM Signal to the defined port
+#define OutputClimbRateMin -3 // -3 this values eqaly 0V voltage to the receiver
+#define OutputClimbRateMax  3 // 3  this values eqaly 3.2V voltage to the receiver
 
-// This makes the most sense.. use the ppm signal to control theopenXvario sensitivity
-#define PPM_TO_KALMAN_R    // PPM Signal will be used to control the KALMAN_R (Sensor Noise) parameter
+/***************************************************************************************/
+/* Parameters for the remote control option of the vario sensitivity                   */
+/* These are parameters that can be used to fine tune the behaviour.                   */
+/* ==>read the WiKi for details.                                                       */
+/***************************************************************************************/
+// These 2 values control on which ppm signal the programming mode will be initiated 
+// a normal servo channel will be in the range of 1000..2000 microseconds
+#define PPM_ProgrammingMode_minppm 900   // Pulse legth in microseconds 
+#define PPM_ProgrammingMode_maxppm 1100  // Pulse legth in microseconds 
+#define PPM_ProgrammingMode_Seconds 30   // the programming mode lasts 30 seconds
+// The KALMAN_R_MIN+MAX Parameters define the range in wehich you will be able to adjust 
+// the sensitivity using your transmitter
 #define KALMAN_R_MIN 1     // 1    the min value for KALMAN_R
 #define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
+
 
 /*****************************************************************************************************/
 /*****************************************************************************************************/
@@ -110,18 +151,11 @@ const int I2CAdd=0x77;     // 0x77 The I2C Address of the MS5611 breakout board 
 /*****************************************************************************************************/
 
 
-
-
-
-
-
-
-
 #include <Wire.h>
 #include <SoftwareSerial.h>
 #include <EEPROM.h> //Needed to access the eeprom read write functions
 
-#define DEBUG
+// #define DEBUG
 
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
@@ -183,7 +217,7 @@ long pressureValues[AverageValueCount+1];
 long pressureStart; // airpressure measured in setup() can be used to calculate total climb / relative altitude
 
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
-unsigned long lastMillisCalc,lastMillisVerticalSpeed,lastMillisFrame1,lastMillisFrame2;
+unsigned long millisStart,lastMillisCalc,lastMillisVerticalSpeed,lastMillisFrame1,lastMillisFrame2;
 int Temp=0;
 float alt=0,rawalt=0;
 long climbRate=0;
@@ -192,11 +226,15 @@ int abweichung=0;
 double kalman_q= KALMAN_Q; //process noise covariance
 double kalman_r= KALMAN_R; //measurement noise covariance
 
+boolean ppmProgMode=false;
+unsigned long ppmProgModeMillis= PPM_ProgrammingMode_Seconds *1000;
+boolean ledIsOn=false;
+int ledcnt=0;
+int countDownSeconds=65535;
+  
 /********************************************************************************** Setup() */
 void setup()
 {
-  
- 
 #ifdef ANALOG_CLIMB_RATE
   analogWrite(PIN_AnalogClimbRate,255/5*1.6); // initialize the output pin 
 #endif
@@ -219,10 +257,6 @@ void setup()
   pinMode(PIN_VoltageCell6,INPUT); 
 #endif
 
-#ifdef PIN_PPM   
-  pinMode(PIN_PPM,INPUT); 
-#endif
-
   Wire.begin();
 #ifdef KALMANDUMP define DEBUG
 #endif
@@ -233,11 +267,15 @@ void setup()
 #endif
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
-
   
-#ifdef PIN_PPM
-  //eepromIntWrite(0,0); // just for testing purposes...
-  // Read Kalman_r from eeprom
+#ifdef PIN_PPM   
+  pinMode(PIN_PPM,INPUT); 
+  digitalWrite(PIN_PPM,HIGH); // enable the internal pullup resistor
+#endif
+
+  //eepromIntWrite(0,0); // just for reset purposes...
+  //Read Kalman_r from eeprom
+#ifdef PPM_ProgrammingMode
   kalman_r=eepromIntRead(0);
   if (kalman_r==0){
     // eeprom value is invalid, so write the default to the eeprom once
@@ -245,6 +283,7 @@ void setup()
     eepromIntWrite(0,(unsigned int)kalman_r);
   }
 #endif 
+
   // Setup the ms5611 Sensor and read the calibration Data
   setupSensor();
  
@@ -261,6 +300,23 @@ void setup()
   SendValue(0x31,(int16_t)(alt/100)-2); //>> overwrite min alt in open 9x
   mySerial.write(0x5E); // End of Frame 1!
 #endif
+
+#ifdef PPM_ProgrammingMode
+  // on startup, check if the ppm signal is in the following range. ( for <n> seconds )
+  if(ppmProgMode=CheckPPMProgMode()){
+    SendGPSDist(uint16_t(1111));
+    ledOn() ;delay(1000);
+    SendGPSDist(uint16_t(kalman_r));
+    ledOn();  delay(100);
+    ledOff();  delay(100);
+    ledOn();  delay(100);
+    ledOff();  delay(100);
+    ledOn();  delay(100);
+    SendGPSDist(uint16_t(1111));
+    ledOn();  delay(1000);
+  }  
+#endif
+  millisStart=millis();
 }
 
 /********************************************************************************** Loop () */
@@ -271,14 +327,36 @@ void loop()
   SavePressure(pressure);// Fill the pressure buffer
   rawalt=getAltitude(pressure,Temp);
   alt=kalman_update(rawalt);
-
+  
+#ifdef PPM_ProgrammingMode
+  if (ppmProgMode and millis()<(millisStart + ppmProgModeMillis)){
+     //blink pattern in programming mode
+     Serial.print("LEDCND=");Serial.println(ledcnt);
+     if (++ledcnt==10){
+       ledcnt=0;
+       if (ledIsOn)ledOff();else ledOn();
+     }
+     // Countdown in T1
+     if(countDownSeconds> (   ((millisStart + ppmProgModeMillis)-millis())/1000)    ){
+        countDownSeconds=  ((millisStart + ppmProgModeMillis)-millis())/1000;
+         SendTemperature1(countDownSeconds*10);
+     }
+     
+  }else if(ppmProgMode){
+    // End Programming Mode!
+    SaveToEEProm();
+    ppmProgMode=false;
+  }
+#endif
   // ------------------------------------------------------ Do the math every <n> ms
   if( (lastMillisCalc + calcIntervallMS) <=millis()) 
   {
     lastMillisCalc=millis(); 
     climbRate=GetClimbRate(alt);
 #ifdef LED_ClimbBlink 
-    if(climbRate >LED_ClimbBlink) ledOn();else ledOff();
+    if (!ppmProgMode){
+      if(climbRate >LED_ClimbBlink) ledOn();else ledOff();
+    }
 #endif
   }
   
@@ -348,21 +426,23 @@ void loop()
 #ifdef SEND_PressureAsDIST
    SendGPSDist(uint16_t(avgPressure/10));
 #endif
-#ifdef SEND_KalmanRasDist
+#ifdef SEND_SensitivityAsDist
    SendGPSDist(uint16_t(kalman_r));
 #endif
 // ********************************* The Temp 1 FIeld
+   if(!ppmProgMode){
 #ifdef SEND_TEMP_T1      
     SendTemperature1(Temp); //internal MS5611 voltage as temperature T1
 #endif
 #ifdef SEND_PressureAsT1 // pressure in T1 Field
     SendTemperature1(avgPressure-SEND_PressureAsT1*10); //pressure in T1 Field
 #endif
+   }
 // ********************************* The Temp 2 FIeld
 #ifdef SEND_TEMP_T2      
     SendTemperature2(Temp); //internal MS5611 voltage as temperature T1
 #endif
-#ifdef SEND_KalmanRasT2 // Kalman Param R in Temp2
+#ifdef SEND_SensitivityAsT2 // Kalman Param R in Temp2
     SendTemperature2(uint16_t(kalman_r)*10); //internal MS5611 voltage as temperature T1
 #endif
 
@@ -373,7 +453,7 @@ void loop()
 #ifdef SEND_PressureAsRPM
    SendRPM(uint16_t(avgPressure/10));
 #endif
-#ifdef SEND_KalmanRasRPM
+#ifdef SEND_SensitivityAsRPM
    SendRPM(uint16_t(kalman_r));
 #endif
 
@@ -391,7 +471,13 @@ void loop()
 #endif
 
     // Read the ppm Signal from receiver
-#ifdef PIN_PPM   
+#ifdef PIN_PPM 
+#ifdef PPM_ProgrammingMode 
+  if (ppmProgMode)
+#endif
+#ifdef PPM_AllwaysUsed 
+  if (true)
+#endif
   ProcessPPMSignal();
 #endif
   }
@@ -422,9 +508,51 @@ void SendAnalogClimbRate(long cr)
 }
 #endif
 
+/**********************************************************/
+/* CheckPPMProgMode => check if the ppm signal is in the  */
+/*   defined range to enter the programming mode          */
+/**********************************************************/
+boolean CheckPPMProgMode(){
+  unsigned int ppm;
+  const byte secToWait=5;
+  for (int i=0;i<=secToWait*10;i+=1){
+    // check every 100ms for 5 seconds
+    if(i%5==0)ledOn(); else ledOff();
+    if(i%10==0){
+      SendTemperature1(secToWait*10- i);
+      SendGPSDist(uint16_t((secToWait*10-i)/10*1111));
+    }
+    ppm=ReadPPM();
+    if(( ppm >PPM_ProgrammingMode_minppm)and (ppm <PPM_ProgrammingMode_maxppm))return true;
+    alt=getAltitude(getPressure (),Temp); // feed the filter...
+    delay(100);
+  }
+  return false;
+}
 
-
-
+/**********************************************************/
+/* SaveToEEProm => save the kalman_r (sensirtivity) to the*/
+/*   eeprom and inform the pilot                          */
+/**********************************************************/
+void SaveToEEProm(){
+  // Store the last known value from the ppm signal to the eeprom
+  eepromIntWrite(0,kalman_r); // just for testing purposes...
+  // send a Signal to the user that the value has been stored
+  // Blink LED: 1 Second on. 3time on for 200 ms, 1 second on
+  SendGPSDist(uint16_t(9999));
+  ledOn() ;delay(1000);
+  SendGPSDist(uint16_t(kalman_r));
+  ledOff();delay(200);
+  ledOn() ;delay(200);
+  ledOff();delay(200);
+  ledOn() ;delay(200);
+  ledOff();delay(200);
+  ledOn() ;delay(200);
+  ledOff();delay(200);
+  SendGPSDist(uint16_t(9999));
+  ledOn() ;delay(1000);
+  ledOff();
+}
 
 /**********************************************************/
 /* ProcessPPMSignal => read PPM signal from receiver and  */
@@ -436,59 +564,34 @@ void ProcessPPMSignal(){
    static unsigned int ppm_min=65535;
    static unsigned int ppm_max=0;
 
-   
-#ifdef PPM_TO_KALMAN_R
-      if (ppm>0){
-         SignalPresent=true;// Signal is currently presen!
-         if (ppm<ppm_min)ppm_min=ppm;
-         if (ppm>ppm_max)ppm_max=ppm;
+   if (ppm>0){
+      SignalPresent=true;// Signal is currently present!
+      if (ppm<ppm_min)ppm_min=ppm;
+      if (ppm>ppm_max)ppm_max=ppm;
          
-         //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
-         kalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN,KALMAN_R_MAX);
-
-      }else{
-         if (SignalPresent == true){
-            // The PPM signal has just been removed! 
-            // debounce:
-            delay(100);
-            ppm= ReadPPM();
-            if (ppm ==0){ // Still no signal after waiting 50ms
-                SignalPresent=false;
-//Serial.print("PPM wurde entfernt!!!!=");Serial.println(ppm);
-
-               // Store the last known value from the ppm signal to the eeprom
-               eepromIntWrite(0,kalman_r); // just for testing purposes...
-               // send a Signal to the user that the value has been stored
-               // Blink LED: 1 Second on. 3time on for 200 ms, 1 second on
-               SendGPSDist(uint16_t(9999));
-               ledOn() ;delay(1000);
-               SendGPSDist(uint16_t(kalman_r));
-               ledOff();delay(200);
-               ledOn() ;delay(200);
-               ledOff();delay(200);
-               ledOn() ;delay(200);
-               ledOff();delay(200);
-               ledOn() ;delay(200);
-               ledOff();delay(200);
-               SendGPSDist(uint16_t(9999));
-               ledOn() ;delay(1000);
-               ledOff();
-               ppm_min=65535;
-               ppm_max=0;
-            }
-         }
+      //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
+      kalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN/10,KALMAN_R_MAX/10)*10; // map value and change stepping to 10
       }
-#endif
+
 }
+
+
+/**********************************************************/
+/* ReadPPM => read PPM signal from receiver               */
+/*   pre-evaluate its value for validity                  */
+/**********************************************************/
+
 // ReadPPM - Read ppm signal and detect if there is no signal
 unsigned long ReadPPM(){
-  unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the ppm value
-  Serial.print("PPM=");Serial.println(ppm);
-  if ((ppm>5000)or (ppm<500))ppm=0; // no signal!
+  unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
+  // Serial.print("PPM=");Serial.println(ppm);
+  if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
  return ppm;
 }
 
-// Write an unsigned int to eeprom
+/**********************************************************/
+/* eepromIntWrite => Write an unsigned int to eeprom      */
+/**********************************************************/
 void eepromIntWrite(int adr, unsigned int value){
     //Serial.print("Writing to eeprom:");Serial.println(value);
 	byte lowB = ((value >> 0) & 0xFF);
@@ -497,6 +600,9 @@ void eepromIntWrite(int adr, unsigned int value){
 	EEPROM.write(adr+ 1, highB);
 }
 
+/**********************************************************/
+/* eepromIntRead => Read unsigned int from the eeprom     */
+/**********************************************************/
 // Read unsigned integer from the eeprom
 unsigned int eepromIntRead(int adr){
 	byte lowB = EEPROM.read(adr);
@@ -548,14 +654,13 @@ void SendValue(uint8_t ID, uint16_t Value) {
 /**********************************************************/
 uint16_t ReadVoltage(int pin)
 {
-    // Convert the analog reading (which goes from 0 - 1023) to a millivolt value
-   return uint16_t(    (float) analogRead(pin) * (float)(readVccMv() /1023.0)     );
+   // Convert the analog reading (which goes from 0 - 1023) to a millivolt value
+   return uint16_t((float)analogRead(pin)*(float)(readVccMv()/1023.0));
 }
 
 /**********************************************************/
 /* SendCellVoltage => send a cell voltage                 */
 /**********************************************************/
-
 void SendCellVoltage(uint8_t cellID, uint16_t voltage) {
   voltage /= 2;
   uint8_t v1 = (voltage & 0x0f00)>>8 | (cellID<<4 & 0xf0);
@@ -677,12 +782,6 @@ long getPressure()
   D1 = getData(0x48, 9); //OSR=4096 0.012 mbar precsision
   D2 = getData(0x50, 1);
 
-//  D1 = getData(0x46, 5); //OSR=2048 0.018 mbar precision
-//  D2 = getData(0x56, 1);
-
-//  D1 = getData(0x44, 3); //OSR=1024 0.027 mbar precision
-//  D2 = getData(0x54, 1);
-
   dT = D2 - ((long)calibrationData[5] << 8);
   TEMP = (2000 + (((int64_t)dT * (int64_t)calibrationData[6]) >> 23)) / (float)100;
   Temp=(int)(TEMP*10);
@@ -770,12 +869,14 @@ void twiSendCommand(byte address, byte command)
 void ledOn()
 {
   digitalWrite(PIN_ClimbLed,1);
+  ledIsOn=true;
 }
 
 
 void ledOff()
 {
   digitalWrite(PIN_ClimbLed,0);
+  ledIsOn=false;
 }
 
 /* readVcc - Read the real internal supply voltageof the arduino 
