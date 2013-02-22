@@ -20,9 +20,7 @@ The following data can be transmitted via the frsky telemetry protocoll for disp
   * temperature (from MS5611) as T1 ID 0x02
   * absolute air pressure
   * 6 single voltage values connected to the pins as configured as cell 1-6 in id 0x06
-  * various other field for diagnostic purposed ( e.g. internal kalman filter parameters)
-
-WARNING: Do NOT attempt to directly connect the 6 available cell voltages to your balance connector! This would only work for the first cell (from gnd) cell 2 and + would exceed the Arduino pin limits (keep the smoke in!)
+  * various other field for diagnostic purposes (e.g. internal kalman filter parameters)
 
 == Building your own ==
 visit the BuildInstructions page to learn how to make an openXvario yourself.
