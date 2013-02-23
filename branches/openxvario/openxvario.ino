@@ -743,8 +743,8 @@ float getAltitude(long press, int temp) {
   temp/=10;
   result=(float)press/100;
   const float sea_press = 1013.25;
-//  return long(((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
-  return (((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100)+10000;
+
+  return (((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100);
 }
 
 /****************************************************************/
