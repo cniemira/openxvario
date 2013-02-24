@@ -52,12 +52,15 @@
 
 //************************** the T2 (temperature 2) Field? (choose only one) **********/
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
-#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
+//#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
+#define SEND_PressureAsT2 9000 // pressure in 1/10th of mBar in T1 Field subtracted by
+                               // the number in the define statment. 
+                               // e.g. 950mbar => 9500 -offset of 9000 => 500 in display
 
 //************************** the RPM Field? (choose only one) *************************/
 //(unprecise field! resolution is in steps of 30RPM!)
 //#define SEND_AltAsRPM      // Altitude in RPM ;-)
-//#define SEND_SensitivityAsRPM  // Kalman Param R in RPM
+#define SEND_SensitivityAsRPM  // Kalman Param R in RPM
 //#define SEND_PressureAsRPM // pressure in RPM Field
 
 
@@ -133,11 +136,23 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 // a normal servo channel will be in the range of 1000..2000 microseconds
 #define PPM_ProgrammingMode_minppm 900   // Pulse legth in microseconds 
 #define PPM_ProgrammingMode_maxppm 1100  // Pulse legth in microseconds 
+
+#define PPM_Range_min 981   // the toatal range min of the ppm input (Pulse legth in microseconds )
+#define PPM_Range_max 1999  // the toatal range max of the ppm input (Pulse legth in microseconds )
+
+
 #define PPM_ProgrammingMode_Seconds 30   // the programming mode lasts 30 seconds
 // The KALMAN_R_MIN+MAX Parameters define the range in wehich you will be able to adjust 
 // the sensitivity using your transmitter
 #define KALMAN_R_MIN 1     // 1    the min value for KALMAN_R
 #define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
+
+/***************************************************************************************/
+/* Calibration Offsets                                                                 */
+/***************************************************************************************/
+//const long PressureCalibrationOffset=475 ; // pressure correction in 1/100 mbar to be added to the measured pressure
+const long PressureCalibrationOffset=0 ; // pressure correction in 1/100 mbar to be added to the measured pressure
+                                         // Calibration instruction will follow
 
 
 /*****************************************************************************************************/
@@ -155,7 +170,7 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 #include <SoftwareSerial.h>
 #include <EEPROM.h> //Needed to access the eeprom read write functions
 
-// #define DEBUG
+//#define DEBUG
 
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
@@ -376,8 +391,8 @@ void loop()
     avgPressure=getAveragePress(); 
 #ifdef DEBUG
     Serial.print(" Pressure:");    Serial.print(pressure,DEC);
-    Serial.print(" AveragePressure:");    Serial.print(avgPressure,DEC);
-    Serial.print(" Altitude:");      Serial.print(alt,DEC);
+    Serial.print(" AveragePressure:");    Serial.print((float)avgPressure/100,DEC);
+    Serial.print(" Altitude:");      Serial.print(alt/100,DEC);
     Serial.print(" ClimbRate:");      Serial.print(climbRate,DEC);
     Serial.print(" K_R:");    Serial.print(kalman_r);
     Serial.print(" Temp:");    Serial.print(Temp,DEC);
@@ -444,6 +459,9 @@ void loop()
 #endif
 #ifdef SEND_SensitivityAsT2 // Kalman Param R in Temp2
     SendTemperature2(uint16_t(kalman_r)*10); //internal MS5611 voltage as temperature T1
+#endif
+#ifdef SEND_PressureAsT2 // pressure in T2 Field
+    SendTemperature2(avgPressure-SEND_PressureAsT2*10); //pressure in T2 Field
 #endif
 
 // ********************************* The RPM Field   
@@ -561,14 +579,20 @@ void SaveToEEProm(){
 void ProcessPPMSignal(){
    static boolean SignalPresent= false;
    unsigned long ppm= ReadPPM();
+#ifdef PPM_ProgrammingMode 
    static unsigned int ppm_min=65535;
    static unsigned int ppm_max=0;
-
+#endif
+#ifdef PPM_AllwaysUsed
+   static unsigned int ppm_min=PPM_Range_min;
+   static unsigned int ppm_max=PPM_Range_max;
+#endif
    if (ppm>0){
       SignalPresent=true;// Signal is currently present!
+#ifdef PPM_ProgrammingMode 
       if (ppm<ppm_min)ppm_min=ppm;
       if (ppm>ppm_max)ppm_max=ppm;
-         
+#endif     
       //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
       kalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN/10,KALMAN_R_MAX/10)*10; // map value and change stepping to 10
       }
@@ -584,7 +608,9 @@ void ProcessPPMSignal(){
 // ReadPPM - Read ppm signal and detect if there is no signal
 unsigned long ReadPPM(){
   unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
-  // Serial.print("PPM=");Serial.println(ppm);
+#ifdef DEBUG
+  Serial.print("PPM=");Serial.println(ppm);
+#endif
   if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
  return ppm;
 }
@@ -702,11 +728,18 @@ void SendAlt(long altcm)
 {
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
   uint16_t Centimeter =  uint16_t(altcm%100);
-  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
+//  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
+  int16_t Meter;
+  if (altcm >0){
+     Meter = int16_t((altcm-(long)Centimeter));
+  }else{
+     Meter = int16_t((altcm+(long)Centimeter));
+  }
+  Meter=Meter/100;
 #ifdef FORCE_ABSOLUTE_ALT
   Meter-=1; // To compensate for a Offset of 1 at the beginning
 #endif
-#ifdef XDEBUG
+#ifdef xDEBUG
   Serial.print("Meter:");
   Serial.print(Meter);
   Serial.print(",");
@@ -741,6 +774,7 @@ void SendGPSAlt(long altcm)
 float getAltitude(long press, int temp) {
   float   result;
   temp/=10;
+  temp -= 5; // compensation for the heat created by arduino itself.
   result=(float)press/100;
   const float sea_press = 1013.25;
 
@@ -788,7 +822,11 @@ long getPressure()
   OFF = ((unsigned long)calibrationData[2] << 16) + (((int64_t)calibrationData[4] * dT) >> 7);
   SENS = ((unsigned long)calibrationData[1] << 15) + (((int64_t)calibrationData[3] * dT) >> 8);
   P = (((D1 * SENS) >> 21) - OFF) >> 15;
-  return P;
+
+  return (P + PressureCalibrationOffset); 
+  
+  //return P+475;
+  //return P+1762;
 }
 
 /****************************************************************/
