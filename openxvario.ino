@@ -1,3 +1,4 @@
+
 // openxvario http://code.google.com/p/openxvario/
 // started by R.Schloßhan 
 
@@ -22,7 +23,7 @@
 /*                    various stuff. Normaly you do not have to change any of these    */
 /***************************************************************************************/
 // Choose if the led should be used for indicationg lift.
-#define LED_ClimbBlink 5  // Blink when climbRate > 0.05cm. The numeric value can be changed to a different cm value
+#define LED_ClimbBlink 10  // Blink when climbRate > 0.05cm. The numeric value can be changed to a different cm value
 
 #define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
                            // in an absolute height display in open9x . (You can still change to a relative display 
@@ -106,12 +107,12 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 /* (less Q requires more R to compensate and vica versa)                               */
 /***************************************************************************************/
 #define KALMAN_Q 0.05 // 0.05 do not tamper with this value unless you are looking for adventure ;-)
-#define KALMAN_R 110  // default:110   change this value if you want to adjust the default sensitivity!
+#define KALMAN_R 300  // default:300   change this value if you want to adjust the default sensitivity!
                       // this will only be used if PIN_PPM is NOT defined
-                      //  50 = fast but more errors (good for sensor testing...but quite a lot of noise)
-                      // 100 = medium speed and less false indications (nice medium setting with 
+                      //  50 = fast but lot of errors (good for sensor testing...but quite a lot of noise)
+                      // 300 = medium speed and less false indications (nice medium setting with 
                       //       a silence window (indoor)of -0.2 to +0.2)
-                      // 200 = conservative setting ;-)
+                      // 1000 = conservative setting ;-)
                       // 500 = still useable maybe for a slow flyer?
                       // 1000 and q=0.001 is it moving at all?? in stable airpressure you can measure 
                       //      the height of your furniture with this setting. but do not use it for flying ;-)
@@ -144,16 +145,18 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 #define PPM_ProgrammingMode_Seconds 30   // the programming mode lasts 30 seconds
 // The KALMAN_R_MIN+MAX Parameters define the range in wehich you will be able to adjust 
 // the sensitivity using your transmitter
-#define KALMAN_R_MIN 1     // 1    the min value for KALMAN_R
+#define KALMAN_R_MIN 50     // 1    the min value for KALMAN_R
 #define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
 
 /***************************************************************************************/
 /* Calibration Offsets                                                                 */
 /***************************************************************************************/
-//const long PressureCalibrationOffset=475 ; // pressure correction in 1/100 mbar to be added to the measured pressure
+//const long PressureCalibrationOffset=-775 ; // pressure correction in 1/100 mbar to be added to the measured pressure
 const long PressureCalibrationOffset=0 ; // pressure correction in 1/100 mbar to be added to the measured pressure
                                          // Calibration instruction will follow
+const long TemperatureCalibrationOffset=-80 ; // Temperature correction in 1/10 of degree celsius
 
+                                        
 
 /*****************************************************************************************************/
 /*****************************************************************************************************/
@@ -172,6 +175,13 @@ const long PressureCalibrationOffset=0 ; // pressure correction in 1/100 mbar to
 
 //#define DEBUG
 
+/***************************************************************************************/
+/* Other Debugging options                                                             */
+/***************************************************************************************/
+//#define PpmToPressure 1023 // If defined use the PPM SIgnal to adjust the pressure sensor, where the center of the 
+                           // Pot will be the value of this define ( in Millibar)
+
+//#define SimulateClimbRate 1 // Simulate a climbrate of <N> cm /s
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
 // we do not need the RX so we set it to 0
@@ -232,9 +242,9 @@ long pressureValues[AverageValueCount+1];
 long pressureStart; // airpressure measured in setup() can be used to calculate total climb / relative altitude
 
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
-unsigned long millisStart,lastMillisCalc,lastMillisVerticalSpeed,lastMillisFrame1,lastMillisFrame2;
+unsigned long millisStart,lastMillisCalc,lastMillisFrame1,lastMillisFrame2,lastMicrosLoop;
 int Temp=0;
-float alt=0,rawalt=0;
+float alt=0,rawalt=0,lastAlt=0;
 long climbRate=0;
 int abweichung=0;
 
@@ -307,7 +317,7 @@ void setup()
     SavePressure(getPressure());
   }
   pressureStart= getAveragePress();
-  alt=getAltitude(getPressure (),Temp);
+  alt=getAltitude(getPressure (),Temp+ TemperatureCalibrationOffset);
 #ifdef FORCE_ABSOLUTE_ALT
   SendAlt(1);  // send initial height
   SendValue(0x00,int16_t(1)); //>> overwrite alt offset in open 9x in order to start with display of absolute altitude... 
@@ -338,15 +348,23 @@ void setup()
 void loop()
 {
   long pressure;
+#ifdef SimulateClimbRate
+  // simulation of a defined climbRate for developing purposes
+  Temp=210; //fake temperature
+  pressure=101300; //fake pressure
+  delay(10);
+  alt= ((float)micros()/(float)1000-(float)millisStart) /1; //climbing!
+#else
+  // get the measurements
   pressure=getPressure();
-  SavePressure(pressure);// Fill the pressure buffer
-  rawalt=getAltitude(pressure,Temp);
+  rawalt=getAltitude(pressure,Temp+ TemperatureCalibrationOffset);
   alt=kalman_update(rawalt);
-  
+#endif
+  SaveClimbRate(alt);   
+
 #ifdef PPM_ProgrammingMode
   if (ppmProgMode and millis()<(millisStart + ppmProgModeMillis)){
      //blink pattern in programming mode
-     Serial.print("LEDCND=");Serial.println(ledcnt);
      if (++ledcnt==10){
        ledcnt=0;
        if (ledIsOn)ledOff();else ledOn();
@@ -363,32 +381,19 @@ void loop()
     ppmProgMode=false;
   }
 #endif
-  // ------------------------------------------------------ Do the math every <n> ms
-  if( (lastMillisCalc + calcIntervallMS) <=millis()) 
+ 
+  // ---------------------------------------------------- Frame 1 to send every 200ms 
+  if( (lastMillisFrame1 + 200) <=millis()) 
   {
-    lastMillisCalc=millis(); 
-    climbRate=GetClimbRate(alt);
+    lastMillisFrame1=millis(); 
+    SavePressure(pressure);// Fill the pressure buffer
+    avgPressure=getAveragePress(); 
+    climbRate=GetClimbRate();
 #ifdef LED_ClimbBlink 
     if (!ppmProgMode){
       if(climbRate >LED_ClimbBlink) ledOn();else ledOff();
     }
 #endif
-  }
-  
-/*  if( (lastMillisVerticalSpeed + 100) <=millis()) 
-  {
-    lastMillisVerticalSpeed=millis(); 
-#ifdef SEND_VERT_SPEED   
-  SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)climbRate); // ClimbRate in open9x Vario mode
-  mySerial.write(0x5E); // End of Frame xx!
-#endif
-  }
-  */
-  // ---------------------------------------------------- Frame 1 to send every 200ms 
-  if( (lastMillisFrame1 + 200) <=millis()) 
-  {
-    lastMillisFrame1=millis(); 
-    avgPressure=getAveragePress(); 
 #ifdef DEBUG
     Serial.print(" Pressure:");    Serial.print(pressure,DEC);
     Serial.print(" AveragePressure:");    Serial.print((float)avgPressure/100,DEC);
@@ -447,7 +452,7 @@ void loop()
 // ********************************* The Temp 1 FIeld
    if(!ppmProgMode){
 #ifdef SEND_TEMP_T1      
-    SendTemperature1(Temp); //internal MS5611 voltage as temperature T1
+    SendTemperature1(Temp+ TemperatureCalibrationOffset); //internal MS5611 voltage as temperature T1
 #endif
 #ifdef SEND_PressureAsT1 // pressure in T1 Field
     SendTemperature1(avgPressure-SEND_PressureAsT1*10); //pressure in T1 Field
@@ -455,7 +460,7 @@ void loop()
    }
 // ********************************* The Temp 2 FIeld
 #ifdef SEND_TEMP_T2      
-    SendTemperature2(Temp); //internal MS5611 voltage as temperature T1
+    SendTemperature2(Temp+ TemperatureCalibrationOffset); //internal MS5611 voltage as temperature T1
 #endif
 #ifdef SEND_SensitivityAsT2 // Kalman Param R in Temp2
     SendTemperature2(uint16_t(kalman_r)*10); //internal MS5611 voltage as temperature T1
@@ -542,7 +547,7 @@ boolean CheckPPMProgMode(){
     }
     ppm=ReadPPM();
     if(( ppm >PPM_ProgrammingMode_minppm)and (ppm <PPM_ProgrammingMode_maxppm))return true;
-    alt=getAltitude(getPressure (),Temp); // feed the filter...
+    alt=getAltitude(getPressure (),Temp+ TemperatureCalibrationOffset); // feed the filter...
     delay(100);
   }
   return false;
@@ -574,19 +579,21 @@ void SaveToEEProm(){
 
 /**********************************************************/
 /* ProcessPPMSignal => read PPM signal from receiver and  */
-/*   use i´s value to adjust sensitivity                  */
+/*   use its value to adjust sensitivity                  */
 /**********************************************************/
+#ifdef PIN_PPM
 void ProcessPPMSignal(){
    static boolean SignalPresent= false;
    unsigned long ppm= ReadPPM();
+   
 #ifdef PPM_ProgrammingMode 
    static unsigned int ppm_min=65535;
    static unsigned int ppm_max=0;
-#endif
-#ifdef PPM_AllwaysUsed
+#else
    static unsigned int ppm_min=PPM_Range_min;
    static unsigned int ppm_max=PPM_Range_max;
 #endif
+
    if (ppm>0){
       SignalPresent=true;// Signal is currently present!
 #ifdef PPM_ProgrammingMode 
@@ -595,10 +602,10 @@ void ProcessPPMSignal(){
 #endif     
       //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
       kalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN/10,KALMAN_R_MAX/10)*10; // map value and change stepping to 10
+
       }
-
 }
-
+#endif
 
 /**********************************************************/
 /* ReadPPM => read PPM signal from receiver               */
@@ -606,6 +613,7 @@ void ProcessPPMSignal(){
 /**********************************************************/
 
 // ReadPPM - Read ppm signal and detect if there is no signal
+#ifdef PIN_PPM
 unsigned long ReadPPM(){
   unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
 #ifdef DEBUG
@@ -614,7 +622,7 @@ unsigned long ReadPPM(){
   if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
  return ppm;
 }
-
+#endif
 /**********************************************************/
 /* eepromIntWrite => Write an unsigned int to eeprom      */
 /**********************************************************/
@@ -638,26 +646,33 @@ unsigned int eepromIntRead(int adr){
 }
 
 /*******************************************************************************/
-/* GetClimbRate => calculate the current climbRate                             */
-/* has to be invoked every 50ms for a queue length of 5 with a multiplier of 4 */
-/* or every 25 ms for a queue length of 5 with a multiplier of 8               */
-/* or every 25 ms for a queue length of 8 with a multiplier of 5               */
+/* SaveClimbRate => calculate the current climbRate                            */
+/* GetClimbRate = > Retrieve the average climbRate from the buffer             */
 /*******************************************************************************/
-//const byte ClimbRateQueueLength=8;
-const byte ClimbRateQueueLength=8;
-float GetClimbRate(float alti){
-  static float climbRateQueue[ClimbRateQueueLength];
+const byte ClimbRateQueueLength=10; // averaging buffer for the climbrate
+float climbRateQueue[ClimbRateQueueLength];
+void SaveClimbRate(float alti){
+  long now=micros();
+  static long lastMicrosVerticalSpeed=micros();
+  long timecalc=now-lastMicrosVerticalSpeed; // the time passed since last CR Calculation
   static float lastAlti=alti;
   static byte cnt=0;
-  static float myClimbRate=0;
-  myClimbRate -= climbRateQueue[cnt]; // overwrite the oldest value in the queue
-  climbRateQueue[cnt]=alti-lastAlti; // store the current height difference
+  lastMicrosVerticalSpeed=now;
+  float CurrentClimbRate=(float)(alti-lastAlti)*((float)1000000/(float)timecalc);
+  climbRateQueue[cnt]=CurrentClimbRate; // store the current ClimbRate
   cnt+=1;
   if (cnt ==ClimbRateQueueLength)cnt=0;
-  myClimbRate += alti-lastAlti; // add the current height difference
   lastAlti=alti;
-  return(myClimbRate*( (1000/calcIntervallMS)/ClimbRateQueueLength));  // if this func ist being called <N> times a second than the multiplier must be <N>/queuelen
-//  return(myClimbRate*5);  // if this func ist being called <N> times a second than the multiplier must be <N>/queuelen
+}
+/* retrieve the average climbRate */
+float GetClimbRate(){
+  float myClimbRate=0;
+  for(int i=0;i<ClimbRateQueueLength;){
+    myClimbRate+=climbRateQueue[i];
+    i++;
+  }
+  myClimbRate/=ClimbRateQueueLength;
+  return myClimbRate;  
 }
 
 /**********************************************************/
@@ -729,11 +744,11 @@ void SendAlt(long altcm)
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
   uint16_t Centimeter =  uint16_t(altcm%100);
 //  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
-  int16_t Meter;
+  long Meter;
   if (altcm >0){
-     Meter = int16_t((altcm-(long)Centimeter));
+     Meter = (altcm-(long)Centimeter);
   }else{
-     Meter = int16_t((altcm+(long)Centimeter));
+     Meter = (altcm+(long)Centimeter);
   }
   Meter=Meter/100;
 #ifdef FORCE_ABSOLUTE_ALT
@@ -746,10 +761,12 @@ void SendAlt(long altcm)
   Serial.println(Centimeter);
 #endif
 
-  SendValue(FRSKY_USERDATA_BARO_ALT_B, Meter);
+  SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
   SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
 }
-
+/****************************************************************/
+/* SendGPSAlt - send the a value to the GPS altitude field      */
+/****************************************************************/
 void SendGPSAlt(long altcm)
 {
   altcm+=100;// The initial altitude setting in open9x seems not to  work if we send 0m. 
@@ -774,13 +791,19 @@ void SendGPSAlt(long altcm)
 float getAltitude(long press, int temp) {
   float   result;
   temp/=10;
-  temp -= 5; // compensation for the heat created by arduino itself.
   result=(float)press/100;
   const float sea_press = 1013.25;
 
   return (((pow((sea_press / result), 1/5.257) - 1.0) * ( (temp/100) + 273.15)) / 0.0065 *100);
 }
-
+// Just for debugging and testing purposes:
+float altToPressure(float altcm){
+  const float sea_press = 1013.25;
+  altcm/=100;
+  //Serial.print("ALT to PRESSURE:");Serial.print(altcm);
+  //Serial.print("=");Serial.println(sea_press*pow((1-((0.0065*altcm)/(21+273.15))),5.257) );
+  return sea_press*pow((1-((0.0065*altcm)/(21+273.15))),5.257) ;
+}
 /****************************************************************/
 /* SavePressure - save a new pressure value to the buffer       */
 /* Rotating Buffer for calculating the Average Pressure         */
@@ -808,6 +831,10 @@ long getAveragePress()
 /****************************************************************/
 long getPressure()
 {
+  
+  #ifdef PpmToPressure
+    return getPPMPressure();
+  #else
   long D1, D2, dT, P;
   float TEMP;
   int64_t OFF, SENS;
@@ -827,7 +854,32 @@ long getPressure()
   
   //return P+475;
   //return P+1762;
+
+  #endif
 }
+#ifdef PpmToPressure
+long getPPMPressure(){
+   long ppm=(long)ReadPPM();
+   delay(10);
+   //static long ppm_min=PPM_Range_min;
+   //static long ppm_max=PPM_Range_max;
+   static long ppm_min=900;
+   static long ppm_max=2000  ;
+   Temp = 210;
+   if (ppm>0){
+//Serial.print("PPM=");Serial.print(ppm);
+/*Serial.print("returnP=");Serial.print(mapFloat(ppm, ppm_min, ppm_max,
+                ((float)PpmToPressure*(float)100)-(float)2000,
+                101325
+             ) );
+Serial.println();*/
+delay(50);
+      return mapFloat(ppm, ppm_min, ppm_max,
+                ((float)PpmToPressure*(float)100)-(float)40000,
+               101325           ); 
+   }
+}
+#endif
 
 /****************************************************************/
 /* getData - Read data from I2C bus                             */
