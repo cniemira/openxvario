@@ -151,7 +151,7 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 /***************************************************************************************/
 /* Calibration Offsets                                                                 */
 /***************************************************************************************/
-const long PressureCalibrationOffset=-775 ; // pressure correction in 1/100 mbar to be added to the measured pressure
+const long PressureCalibrationOffset=-457.5; // pressure correction in 1/100 mbar to be added to the measured pressure
 //const long PressureCalibrationOffset=0 ; // pressure correction in 1/100 mbar to be added to the measured pressure
                                            // Calibration instruction will follow
 const long TemperatureCalibrationOffset=-80 ; // Temperature correction in 1/10 of degree celsius
@@ -173,7 +173,7 @@ const long TemperatureCalibrationOffset=-80 ; // Temperature correction in 1/10 
 #include <SoftwareSerial.h>
 #include <EEPROM.h> //Needed to access the eeprom read write functions
 
-//#define DEBUG
+#define DEBUG
 
 /***************************************************************************************/
 /* Other Debugging options                                                             */
@@ -742,19 +742,19 @@ void SendCurrent(float amp) {
 void SendAlt(long altcm)
 {
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
-  uint16_t Centimeter =  uint16_t(altcm%100);
+  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
 //  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
   long Meter;
   if (altcm >0){
-     Meter = (altcm-(long)Centimeter);
+    Meter = (altcm-(long)Centimeter);
   }else{
-     Meter = (altcm+(long)Centimeter);
+    Meter = -1*(abs(altcm)+(long)Centimeter);
   }
   Meter=Meter/100;
 #ifdef FORCE_ABSOLUTE_ALT
   Meter-=1; // To compensate for a Offset of 1 at the beginning
 #endif
-#ifdef xDEBUG
+#ifdef DEBUG
   Serial.print("Meter:");
   Serial.print(Meter);
   Serial.print(",");
