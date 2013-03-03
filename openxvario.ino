@@ -742,13 +742,13 @@ void SendCurrent(float amp) {
 void SendAlt(long altcm)
 {
   // The initial altitude setting in open9x seems not to  work if we send 0m. it works fine though if we use 1m, so as a workaround we increase all alt values by 1.
-  uint16_t Centimeter =  uint16_t(altcm%100);
+  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
 //  int16_t Meter = int16_t((altcm-(long)Centimeter)/(long)100);
   long Meter;
   if (altcm >0){
-     Meter = (altcm-(long)Centimeter);
+    Meter = (altcm-(long)Centimeter);
   }else{
-     Meter = (altcm+(long)Centimeter);
+    Meter = -1*(abs(altcm)+(long)Centimeter);
   }
   Meter=Meter/100;
 #ifdef FORCE_ABSOLUTE_ALT
