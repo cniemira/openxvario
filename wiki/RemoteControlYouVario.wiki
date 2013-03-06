@@ -40,7 +40,7 @@ You should enable the following additional fields on it:
 
 ==> T1 (will be used for the countdown timer)
 
-==> T2 (will be used to display the sensitivity value)
+==> RPM (will be used to display the sensitivity value (in steps of 30, real value might be a bit different)
 
 ==> DIST (will be used to indicate the start/end of programming mode)
 
