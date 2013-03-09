@@ -302,7 +302,7 @@ void setup()
   //Read Kalman_r from eeprom
 #ifdef PPM_ProgrammingMode
   kalman_r=eepromIntRead(0);
-  if (kalman_r==0){
+  if ((kalman_r==65535)or (kalman_r==0)){
     // eeprom value is invalid, so write the default to the eeprom once
     kalman_r=KALMAN_R;
     eepromIntWrite(0,(unsigned int)kalman_r);
