@@ -84,6 +84,9 @@ If yours hasn´t got those male headers, just plug some header pins into the fem
 
 visit the ConfigureVarioSettingsInOpen9x to learn how to set the configuration in open9x 
 
+Now where your openXvario is hopefully happily beeping on your desk, (and soon in the air) you might want to consider donating a small amount:
+https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donateCC_LG.gif
+[https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4GNGDMV5VP2US Paypal Donate]
 
 Have fun,
 
