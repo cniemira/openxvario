@@ -27,23 +27,25 @@ WARNING: make sure you are using only one Power Source for the Arduino. If you c
 You can use a standard servo cable to connected the Arduino to a free servo port of the frsky receiver.
 Pins to be connected:
 {{{
-=== Powering the Arduino: ===
+(nano pin names in bracket if different)
+=== Powering the Arduino : ===
      Arduino GND   --------------------- Receiver GND (Servo Plug)
-     Arduino RAW   --------------------- Receiver +5V (Servo Plug)
+     Arduino RAW(VIN)  ----------------- Receiver +5V (Servo Plug)
 
 === Optional PPM Input from servo port to the arduino: ===
-     Arduino Pin 2 --------------------- Receiver PPM Signal (Servo Plug)
+     Arduino Pin 2(D2) ----------------- Receiver PPM Signal (Servo Plug)
 
 === Output of the data to the receiver: ===
-     Arduino Pin 4 --------------------- Receiver RX Pin (If there is a RS232 Port on the receiver)
+     Arduino Pin 4(D4) ----------------- Receiver RX Pin (If there is a RS232 Port on the receiver)
   or
-     Arduino Pin 3 --------------------- Receiver A1 or A2 (If there is NO RS232 Port on the receiver)
+     Arduino Pin 3(D3) ----------------- Receiver A1 or A2 (If there is NO RS232 Port on the receiver)
 
 === connecting the MS56711 module to the receiver ===
-     Arduino Pin A4--------------------- MS5611 SDA
-     Arduino Pin A5--------------------- MS5611 SCL
-     Arduino VCC   --------------------- MS5611 5V
-     Arduino GND   --------------------- MS5611 GND
+     Arduino Pin A4   ------------------ MS5611 SDA
+     Arduino Pin A5   ------------------ MS5611 SCL
+     Arduino VCC (5V) ------------------ MS5611 5V
+     Arduino GND      ------------------ MS5611 GND
+	 
 }}}
 
 There are various different MS5611 Modules available. I have used the following so far:
