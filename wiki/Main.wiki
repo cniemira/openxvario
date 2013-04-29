@@ -60,3 +60,5 @@ https://openxvario.googlecode.com/svn/wiki/images/Prototype2.jpg
 https://openxvario.googlecode.com/svn/wiki/images/Prototype2Back.jpg
 
 Hint: this prototype is not using the ppm signal from the receiver. new pictures will follow..
+=== Other usefull information ===
+  * Macca55 found out that the sensor is quite sensitive to direct sunlight. read here: http://openrcforums.com/forum/viewtopic.php?f=86&t=2629&sid=98c8fe9a88ae3303e047b59c4a3fb69a&start=240#p48371
