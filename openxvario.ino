@@ -36,7 +36,7 @@
 /* ==> choose freely one value per Telemetry field                                     */
 /***************************************************************************************/
 //**************** the DIST field (GPS Distance) (choose only one)**********************/
-#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
+//#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
                            // be subtracted from the actual height for higher display precision.
                            // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7)
                            // if we subtract 300 display will be 156 78
@@ -44,6 +44,7 @@
                            //  will only be transmitted up to an altitude of 327.68 m
 //#define SEND_SensitivityAsDist // sensitivity in DIST
 //#define SEND_PressureAsDIST    // pressure in DIST field
+#define SEND_mAhAsDist
 
 //************************** the T1 (temperature 1) Field? (choose only one) **********/
 #define SEND_TEMP_T1         // MS5611 temperature as Temp1
@@ -105,10 +106,10 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 /* Uncomment the #define sendCurrent toenable this feature.                            */
 /***************************************************************************************/
 #define SendCurrent  // Uncomment to enable a connected Current Sensor
-#define MinCurrentMilliamps -37879    // the lowest measured current (=0v input voltage)
-#define MaxCurrentMilliamps 37879     // the hioghest measured current (= input voltage= vRef)
+#define MinCurrentMilliamps -13510    // the lowest measured current (=0v input voltage)
+#define MaxCurrentMilliamps 13510     // the hioghest measured current (= input voltage= vRef)
 
-#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.: -4.5A => +4.5A)
+//#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.: -4.5A => +4.5A)
 //Here are some example values for standard ACS712 types of sensors
 // Sensor Type    Min    Max     
 // -5A  .. +5A   -13510  13510 
@@ -261,6 +262,9 @@ long pressureStart; // airpressure measured in setup() can be used to calculate 
 #ifdef SendCurrent
 const byte CurrentValuesCount = 50;
 long CurrentValues[CurrentValuesCount+1];  // Averaging buffer for the measured current values
+float mAh =0; // = Nano Ampere Hours consumed
+long mA=0;
+unsigned long MicrosLastCurrent =0 ;
 #endif
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
 unsigned long millisStart,lastMillisCalc,lastMillisFrame1,lastMillisFrame2,lastMicrosLoop;
@@ -392,7 +396,6 @@ void loop()
 
 #ifdef SendCurrent
   SaveCurrent(map(ReadVoltage(PIN_CurrentSensor),0,readVccMv(),MinCurrentMilliamps,MaxCurrentMilliamps)); // save the current measurements...
-  //SaveCurrent(map(ReadVoltage(PIN_CurrentSensor),0,5000,MinCurrentMilliamps,MaxCurrentMilliamps)); // save the current measurements...
 #endif
 
 #ifdef PPM_ProgrammingMode
@@ -438,9 +441,12 @@ void loop()
 #ifdef PIN_VoltageCell1 
     Serial.print(" Cell 1:"); Serial.print(ReadVoltage(PIN_VoltageCell1));
 #endif   
+
+#ifdef SendCurrent
     Serial.print(" Avg mAmp:"); Serial.print(getAverageCurrent());
     Serial.print(" XMit mAmp:"); Serial.print(getAverageCurrent());
-  
+    Serial.print(" mAh verbraucht: "); Serial.print(mAh,DEC);
+#endif
     Serial.println();
 #endif
 
@@ -488,6 +494,13 @@ void loop()
 #ifdef SEND_SensitivityAsDist
    SendGPSDist(uint16_t(kalman_r));
 #endif
+#ifdef SendCurrent
+#ifdef SEND_mAhAsDist
+   SendGPSDist(uint16_t(mAh));
+#endif
+#endif
+
+
 // ********************************* The Temp 1 FIeld
    if(!ppmProgMode){
 #ifdef SEND_TEMP_T1      
@@ -527,11 +540,17 @@ void loop()
 
 // ******************************** The Current Field
 #ifdef SendCurrent
-  
-  SendCurrentMilliAmps(getAverageCurrent());
-  //SendCurrentMilliAmps(map(getAverageCurrent(),0,5000,MinCurrentMilliamps,MaxCurrentMilliamps));
-
-  // SendCurrent(133.5);    // example to send a current. 
+   mA=getAverageCurrent()  ;
+   SendCurrentMilliAmps(mA);
+   if (MicrosLastCurrent>0){  // internal mAh calculation
+      unsigned long micrPassed=micros()-MicrosLastCurrent;
+      Serial.print("MicrosPassed="); Serial.print(micrPassed);
+      float tmp1=(60*60);
+      Serial.print("A/SEC="); Serial.print((mA/tmp1),DEC);
+     Serial.print("mAh+="); Serial.print( ( (mA/tmp1)*micrPassed)/1000000,DEC);
+      mAh+=( (mA/tmp1)*micrPassed)/1000000;
+  }
+  MicrosLastCurrent=micros();
 #endif
    
    mySerial.write(0x5E); // End of Frame 1!
@@ -855,7 +874,7 @@ float altToPressure(float altcm){
 /*************************************/
 
 void SendCurrentMilliAmps(float milliamps) {
-  Serial.print("MilliAmps:"); Serial.print(milliamps);
+  //Serial.print("MilliAmps:"); Serial.print(milliamps);
   #ifdef ForceAbsolutCurrent
      milliamps=abs(milliamps);
   #endif 
