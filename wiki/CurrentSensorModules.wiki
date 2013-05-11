@@ -1,0 +1,60 @@
+#summary openXvario+C Measuring Currents / calculating consumed Capacuity
+
+= openXvario+C =
+
+== Current sensor support in openXvario ==
+
+There are plenty of real cheap current sensor modules available on eBay from far east sellers. Prices start at something between 2 and 3€ for a bidirectional current sensor in the +/- 5A,20A or 30A range. 
+https://openxvario.googlecode.com/svn/wiki/images/ACS712%20current%20sensor%20module.png
+Now you can directly connect these cheap current sensor modules to your openXvario.
+
+In open9x/openTx/Frsky Taranis this should enable the following telemetry fields:
+
+CNSP => the consumed capactiy in mAh (calculated from current+time)
+Curr => the current being measured
+Watt => the current power... (  a measured voltage measured via A1/A2 as well)
+
+== Connecting the current sensor modules to your openXvario ==
+{{{
+     Arduino GND   --------------------- Current Sensor Module GND 
+     Arduino VCC   --------------------- Current Sensor Module VCC
+	 Arduino A2    --------------------- Current Sensor Module OUT
+}}}
+
+== Sensor types that should work ==
+the oXv expects a uni or bi-directional current sensor with a linear voltage output representing the measured current.
+most current sensor should be OK for this.
+the sensors i tested can be powered directly from the arduino boards GND+VCC pin for this they have to accept an input voltage of 5V
+
+A current sensor with a linear voltage relative to the measured output can be connected to the openXvario.
+This has been tested using 3 different types of ACS712 Current sensor modules that can be purchased for 2-3€ from various far east ebay sellers.
+these modules are bidirectional sensors 
+
+== Configuring the openXvario code for the current Sensor ==
+the followin section of the souece code can be modified to configure the parameters needed for the current sensor functionality
+{{{
+/***************************************************************************************/
+/* Optional Feature Current Mesaurement                                                */
+/* Uncomment the #define sendCurrent toenable this feature.                            */
+/***************************************************************************************/
+#define SendCurrent  // Uncomment to enable a connected Current Sensor
+#define MinCurrentMilliamps -37879    // the lowest measured current (=0v input voltage)
+#define MaxCurrentMilliamps 37879     // the hioghest measured current (= input voltage= vRef)
+
+#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.:-4.5A => +4.5A)
+//Here are some example values for standard ACS712 types of sensors
+// Sensor Type    Min    Max     
+// -5A  .. +5A   -13510  13510 
+// -20A .. +20A  -25000	 25000
+// -30A .. +30A  -37879	 37879
+}}}
+
+The pin to connect the signal line from the sensor module can be configured by changing this line in the config section:
+{{{
+#define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
+}}}
+the "2" is the number of the Analog input pin to be used.
+
+== calculating the min/max values for other sensor types ==
+i prepared a little spreadsheet you can use to calculate the min/max values for other sensor types.
+you can download the spreadsheet here: https://code.google.com/p/openxvario/source/browse/wiki/Other/openXvario%20Current%20Sensors.xlsx
