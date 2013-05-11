@@ -18,7 +18,7 @@ Watt => the current power... (  a measured voltage measured via A1/A2 as well)
 {{{
      Arduino GND   --------------------- Current Sensor Module GND 
      Arduino VCC   --------------------- Current Sensor Module VCC
-	 Arduino A2    --------------------- Current Sensor Module OUT
+     Arduino A2    --------------------- Current Sensor Module OUT
 }}}
 
 == Sensor types that should work ==
