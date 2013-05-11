@@ -1,4 +1,5 @@
 #summary openXvario+C Measuring Currents / calculating consumed Capacuity
+#labels Featured
 
 = openXvario+C =
 
