@@ -24,6 +24,10 @@ The following data can be transmitted via the frsky telemetry protocoll for disp
 
 == Building your own ==
 visit the BuildInstructions page to learn how to make an openXvario yourself.
+
+== Current Sensor Module support ==
+It is now possible to connect a current sensor module to your openXvario as well. visit the Wiki Page CurrentSensorModules for details
+
 == Configuring open9x ==
 visit the ConfigureVarioSettingsInOpen9x to learnm how to set the configuration in open9x
 == Remote control your openXvario ==
