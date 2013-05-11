@@ -59,3 +59,14 @@ the "2" is the number of the Analog input pin to be used.
 == calculating the min/max values for other sensor types ==
 i prepared a little spreadsheet you can use to calculate the min/max values for other sensor types.
 you can download the spreadsheet here: https://code.google.com/p/openxvario/source/browse/wiki/Other/openXvario%20Current%20Sensors.xlsx
+
+== Capacity Measuring ==
+as the current implementation of the current metering & mAh calculation in openTx only works with a resolution of 100mAh, i have implemented a openXvario internal capacity calculation with a higher precision. This can be used to calculate capacities down to a mAh scale.
+The count of capacity will be started with 0mAh each time the oXv gets powered up.
+The calculated value can be transmitted in the DIST field to openTX by 
+uncommenting the following define:
+{{{
+#define SEND_mAhAsDist
+}}}
+
+This enables the use of real capacity monitoring in models using very small batteries like DLGs or micro planes.
