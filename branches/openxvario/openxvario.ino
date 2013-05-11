@@ -7,11 +7,11 @@
 /* Remote controlling the sensitivity using a servo port on your receiver              */
 /* ==> choose 0 to 1 option! You need to have the PIN_PPM defined as well              */
 /***************************************************************************************/
-//#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
+#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
                            // Choose this if you want to use a dedicated channel just for 
                            // adjusting the sensitivity
 
-#define PPM_ProgrammingMode // PPM Signal will only used if programming mode is initiated
+//#define PPM_ProgrammingMode // PPM Signal will only used if programming mode is initiated
                             // if this option is enabled, the vario will go into programming
                             // mode on startup if the ppm value is in a predefined range
                             // on powerup (e.g. rudder stick full left)
@@ -25,7 +25,7 @@
 // Choose if the led should be used for indicationg lift.
 #define LED_ClimbBlink 10  // Blink when climbRate > 0.05cm. The numeric value can be changed to a different cm value
 
-#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
+//#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
                            // in an absolute height display in open9x . (You can still change to a relative display 
                            // by pressing [MENU] in the telem.screens
                            // If not defined, open9x will use the first transmitted altitude as an internal offset, 
@@ -53,15 +53,15 @@
 
 //************************** the T2 (temperature 2) Field? (choose only one) **********/
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
-//#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
-#define SEND_PressureAsT2 9000 // pressure in 1/10th of mBar in T1 Field subtracted by
+#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
+//#define SEND_PressureAsT2 9000 // pressure in 1/10th of mBar in T1 Field subtracted by
                                // the number in the define statment. 
                                // e.g. 950mbar => 9500 -offset of 9000 => 500 in display
 
 //************************** the RPM Field? (choose only one) *************************/
 //(unprecise field! resolution is in steps of 30RPM!)
 //#define SEND_AltAsRPM      // Altitude in RPM ;-)
-#define SEND_SensitivityAsRPM  // Kalman Param R in RPM
+//#define SEND_SensitivityAsRPM  // Kalman Param R in RPM
 //#define SEND_PressureAsRPM // pressure in RPM Field
 
 
@@ -78,7 +78,7 @@
 /*                    fields. uncomment any line to enable its transmission            */
 /***************************************************************************************/
 // Define a voltagepin if you want to transmit the value to open9x:
-//#define PIN_VoltageCell1 0    //  Pin for measuring Voltage of cell 1 ( Analog In Pin! )
+#define PIN_VoltageCell1 2    //  Pin for measuring Voltage of cell 1 ( Analog In Pin! )
 //#define PIN_VoltageCell2 1    //  Pin for measuring Voltage of cell 2 ( Analog In Pin! )
 //#define PIN_VoltageCell3 2    //  Pin for measuring Voltage of cell 3 ( Analog In Pin! )
 //#define PIN_VoltageCell4 3    //  Pin for measuring Voltage of cell 4 ( Analog In Pin! )
@@ -90,14 +90,30 @@
 /*                    and the I2C address of the connected MS5611 module               */
 /*                    Normaly you do not have to change any of these                   */
 /***************************************************************************************/
-#define PIN_SerialTX 4        // 4  the pin to transmit the serial data to the frsky telemetry enabled receiver
-#define PIN_ClimbLed 13       // 13 the led used to indicate lift ( led lights up above +0.10m/s)
-#define PIN_AnalogClimbRate 3 // 3 the pin used to optionally write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
-#define PIN_PPM 2             // default: 2 the pin to read the PPM Signal on coming from the receiver.           
-                              // you can uncomment this line if you want to completly disable the remote control functionality
-const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout board 
-                              // (normally 0x76 or 0x77 configured on the MS5611 module 
-                              // via a solder pin or fixed)
+#define PIN_SerialTX        4  // 4  the pin to transmit the serial data to the frsky telemetry enabled receiver
+#define PIN_ClimbLed        13 // 13 the led used to indicate lift ( led lights up above +0.10m/s)
+#define PIN_AnalogClimbRate 3  // 3 the pin used to optionally write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
+#define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
+                               // you can uncomment this line if you want to completly disable the remote control functionality
+#define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
+const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout board 
+                               // (normally 0x76 or 0x77 configured on the MS5611 module 
+                               // via a solder pin or fixed)
+                              
+/***************************************************************************************/
+/* Optional Feature Current Mesaurement                                                */
+/* Uncomment the #define sendCurrent toenable this feature.                            */
+/***************************************************************************************/
+#define SendCurrent  // Uncomment to enable a connected Current Sensor
+#define MinCurrentMilliamps -37879    // the lowest measured current (=0v input voltage)
+#define MaxCurrentMilliamps 37879     // the hioghest measured current (= input voltage= vRef)
+
+#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.: -4.5A => +4.5A)
+//Here are some example values for standard ACS712 types of sensors
+// Sensor Type    Min    Max     
+// -5A  .. +5A   -13510  13510 
+// -20A .. +20A  -25000	 25000
+// -30A .. +30A  -37879	 37879
 
 /***************************************************************************************/
 /* sensitivity / data filtering / Kalman filter parameters                             */
@@ -147,6 +163,7 @@ const int I2CAdd=0x77;        // 0x77 The I2C Address of the MS5611 breakout boa
 // the sensitivity using your transmitter
 #define KALMAN_R_MIN 50     // 1    the min value for KALMAN_R
 #define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
+
 
 /***************************************************************************************/
 /* Calibration Offsets                                                                 */
@@ -241,12 +258,17 @@ long avgPressure;
 long pressureValues[AverageValueCount+1];
 long pressureStart; // airpressure measured in setup() can be used to calculate total climb / relative altitude
 
+#ifdef SendCurrent
+const byte CurrentValuesCount = 50;
+long CurrentValues[CurrentValuesCount+1];  // Averaging buffer for the measured current values
+#endif
 unsigned int calibrationData[7]; // The factory calibration data of the ms5611
 unsigned long millisStart,lastMillisCalc,lastMillisFrame1,lastMillisFrame2,lastMicrosLoop;
 int Temp=0;
 float alt=0,rawalt=0,lastAlt=0;
 long climbRate=0;
 int abweichung=0;
+
 
 double kalman_q= KALMAN_Q; //process noise covariance
 double kalman_r= KALMAN_R; //measurement noise covariance
@@ -281,6 +303,11 @@ void setup()
 #ifdef PIN_VoltageCell6   
   pinMode(PIN_VoltageCell6,INPUT); 
 #endif
+
+#ifdef SendCurrent   
+  pinMode(PIN_CurrentSensor,INPUT); 
+#endif
+
 
   Wire.begin();
 #ifdef KALMANDUMP define DEBUG
@@ -362,6 +389,12 @@ void loop()
 #endif
   SaveClimbRate(alt);   
 
+
+#ifdef SendCurrent
+  SaveCurrent(map(ReadVoltage(PIN_CurrentSensor),0,readVccMv(),MinCurrentMilliamps,MaxCurrentMilliamps)); // save the current measurements...
+  //SaveCurrent(map(ReadVoltage(PIN_CurrentSensor),0,5000,MinCurrentMilliamps,MaxCurrentMilliamps)); // save the current measurements...
+#endif
+
 #ifdef PPM_ProgrammingMode
   if (ppmProgMode and millis()<(millisStart + ppmProgModeMillis)){
      //blink pattern in programming mode
@@ -402,6 +435,12 @@ void loop()
     Serial.print(" K_R:");    Serial.print(kalman_r);
     Serial.print(" Temp:");    Serial.print(Temp,DEC);
     Serial.print(" VCC:"); Serial.print(readVccMv());
+#ifdef PIN_VoltageCell1 
+    Serial.print(" Cell 1:"); Serial.print(ReadVoltage(PIN_VoltageCell1));
+#endif   
+    Serial.print(" Avg mAmp:"); Serial.print(getAverageCurrent());
+    Serial.print(" XMit mAmp:"); Serial.print(getAverageCurrent());
+  
     Serial.println();
 #endif
 
@@ -417,7 +456,7 @@ void loop()
     SendCellVoltage(0,readVccMv()); 
 #endif   
 #ifdef SEND_VFAS_NEW
-    // vcc as vfas (supposed to be working in an upcoming version of open9x)
+    // vcc as vfas 
     SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)readVccMv()/100); 
 #endif   
 #ifdef PIN_VoltageCell1 
@@ -486,7 +525,15 @@ void loop()
    SendGPSDist(uint16_t(kalman_r));
 #endif
 
-   // SendCurrent(133.5);    // example to send a current. 
+// ******************************** The Current Field
+#ifdef SendCurrent
+  
+  SendCurrentMilliAmps(getAverageCurrent());
+  //SendCurrentMilliAmps(map(getAverageCurrent(),0,5000,MinCurrentMilliamps,MaxCurrentMilliamps));
+
+  // SendCurrent(133.5);    // example to send a current. 
+#endif
+   
    mySerial.write(0x5E); // End of Frame 1!
 
 #ifdef ANALOG_CLIMB_RATE   
@@ -516,6 +563,9 @@ void loop()
   }
   */
 }
+
+
+
 
 #ifdef ANALOG_CLIMB_RATE
 /**********************************************************/
@@ -617,7 +667,7 @@ void ProcessPPMSignal(){
 unsigned long ReadPPM(){
   unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
 #ifdef DEBUG
-  Serial.print("PPM=");Serial.println(ppm);
+  //Serial.print("PPM=");Serial.println(ppm);
 #endif
   if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
  return ppm;
@@ -729,13 +779,7 @@ void SendRPM(uint16_t rpm) {
   rpm = uint16_t((float)rpm/(60/blades));  
   SendValue(FRSKY_USERDATA_RPM, rpm);
 }
-/*************************************/
-/* SendCurrent => Send Current       */
-/*************************************/
 
-void SendCurrent(float amp) {
-  SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(amp*10));
-}
 /**********************************/
 /* SendAlt => Send ALtitude in cm */
 /**********************************/
@@ -804,6 +848,45 @@ float altToPressure(float altcm){
   //Serial.print("=");Serial.println(sea_press*pow((1-((0.0065*altcm)/(21+273.15))),5.257) );
   return sea_press*pow((1-((0.0065*altcm)/(21+273.15))),5.257) ;
 }
+
+#ifdef SendCurrent
+/*************************************/
+/* SendCurrentMilliAmps => Send Current       */
+/*************************************/
+
+void SendCurrentMilliAmps(float milliamps) {
+  Serial.print("MilliAmps:"); Serial.print(milliamps);
+  #ifdef ForceAbsolutCurrent
+     milliamps=abs(milliamps);
+  #endif 
+  SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
+}
+
+/****************************************************************/
+/* SaveCurrent - save a new Current value to the buffer       */
+/* Rotating Buffer for calculating the Average Current         */
+/****************************************************************/
+void SaveCurrent(long current){
+  static int cnt =0;
+  CurrentValues[cnt++]=current;
+  if(cnt>CurrentValuesCount){
+      cnt=0;
+  }
+}
+/****************************************************************/
+/* getAverageCurrent - calculate average Current based on all    */
+/* entries in the Current buffer                               */
+/****************************************************************/
+long getAverageCurrent()
+{
+  long result=0;
+  for (int i=0;i<CurrentValuesCount;i++) result +=CurrentValues[i];
+  //return ((result/CurrentValuesCount)/10)*10;
+  return result/CurrentValuesCount;
+}
+#endif
+
+
 /****************************************************************/
 /* SavePressure - save a new pressure value to the buffer       */
 /* Rotating Buffer for calculating the Average Pressure         */
