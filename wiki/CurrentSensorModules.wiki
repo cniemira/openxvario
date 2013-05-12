@@ -64,6 +64,8 @@ The pin to connect the signal line from the sensor module can be configured by c
 the "2" is the number of the Analog input pin to be used.
 
 == calculating the min/max values for other sensor types ==
+https://openxvario.googlecode.com/svn/wiki/images/CurrentSensorCalculation.png
+
 i prepared a little spreadsheet you can use to calculate the min/max values for other sensor types.
 you can download the spreadsheet here: https://code.google.com/p/openxvario/source/browse/wiki/Other/openXvario%20Current%20Sensors.xlsx
 
