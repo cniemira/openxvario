@@ -7,7 +7,14 @@
 
 There are plenty of real cheap current sensor modules available on eBay from far east sellers. Prices start at something between 2 and 3€ for a bidirectional current sensor in the +/- 5A,20A or 30A range. 
 https://openxvario.googlecode.com/svn/wiki/images/ACS712%20current%20sensor%20module.png
+
 Now you can directly connect these cheap current sensor modules to your openXvario.
+
+https://openxvario.googlecode.com/svn/wiki/images/CurrentSensorRepackaged.png
+
+this is a +-5A sensor repackaged for use in one of my DLG Gliders:
+
+
 
 In open9x/openTx/Frsky Taranis this should enable the following telemetry fields:
 
