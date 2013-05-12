@@ -39,5 +39,6 @@ https://openxvario.googlecode.com/svn/wiki/images/Telemetry3.png
 configure your telemetry screens to your liking..
 
 =Setting up a switch to turn on the vario sound=
-  * setup a switch to turn on/off the vario tone generation
-the remaining setup fot the switch + telemetry screen is described in the open9x documentation
+you need to create a custom function in openTX to activate the vario tone generation:
+
+https://openxvario.googlecode.com/svn/wiki/images/customFunctionVario.png
