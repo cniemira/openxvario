@@ -205,5 +205,14 @@ void OXS_OUT_FRSKY::SendGPSAlt(long altcm)
   SendValue(FRSKY_USERDATA_GPS_ALT_B, Meter);
   SendValue(FRSKY_USERDATA_GPS_ALT_A, Centimeter);
 }
-
+/*************************************/
+/* SendCurrentMilliAmps => Send Current       */
+/*************************************/
+void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps) 
+{
+  #ifdef ForceAbsolutCurrent
+     milliamps=abs(milliamps);
+  #endif 
+  SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
+}
 
