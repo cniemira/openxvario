@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include "oxs_config.h"
-#include "oxs_current.h"
 #include "oxs_ms5611.h"
+#include "oxs_curr.h"
 #include "oxs_out_frsky.h"
 #include <SoftwareSerial.h>
 
@@ -19,17 +19,21 @@
 
 #define DEBUG
 
-OXS_MS5611 oxs_MS5611(I2CAdd,Serial);
-OXS_CURRENT oxs_Current(PIN_CurrentSensor,Serial);
-OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX,Serial);
+  OXS_MS5611 oxs_MS5611(I2CAdd,Serial);
+  OXS_CURRENT oxs_Current(PIN_CurrentSensor,Serial);
+  OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX,Serial);
 
 void setup(){
   #ifdef DEBUG
     Serial.begin(115200);
   #endif
-  
+   Serial.println("openXsensor starting....");
+
+
   oxs_MS5611.setup();
-  //oxs_Current.setupMinMaxA(-13514,13514);
+  Serial.println("back MS5611 from setup");
+    
+  oxs_Current.setupMinMaxA(-13514,13514);
   oxs_Current.setupIdleMvA( 2500,185);
   oxs_OutFrsky.setup();
 
@@ -53,15 +57,16 @@ void loop(){
     
     // OutputModule go here
     #ifdef DEBUG
-      //OutputToSerial(oxs_MS5611.varioData);
+      OutputToSerial(oxs_MS5611.varioData,oxs_Current.currentData);
     #endif
     oxs_OutFrsky.varioData=oxs_MS5611.varioData;
+    oxs_OutFrsky.currentData=oxs_Current.currentData;
     oxs_OutFrsky.sendData();
   }
 }
 
 void OutputToSerial(VARIODATA &varioData,CURRENTDATA &currentDData){
-    Serial.print("mBar=");    Serial.print( ( ((float)(int32_t)(varioData.pressure))) /100);
+    /* Serial.print("mBar=");    Serial.print( ( ((float)(int32_t)(varioData.pressure))) /100);
     Serial.print(";relAlt=");  Serial.print( ( (float)varioData.relativeAlt)/100);
     
     Serial.print("  ;absAlt=");  Serial.print( ( (float)varioData.absoluteAlt)/100);
@@ -76,11 +81,11 @@ void OutputToSerial(VARIODATA &varioData,CURRENTDATA &currentDData){
    
     Serial.print("  ;Temperature=");    Serial.print((float)varioData.temperature/10);
     Serial.println();
-    
-    Serial.print("A=");    Serial.print( ( ((float)(int32_t)(currentDData.milliAmps))) /1000);
-    Serial.print("mAh=");  Serial.print( currentDData.consumedMilliAmps);
+    */
+    Serial.print("  ;mA=");    Serial.print( ( ((float)(int32_t)(currentDData.milliAmps))) /1000);
+    Serial.print("  ;mAh=");  Serial.print( currentDData.consumedMilliAmps);
     Serial.println();
-    
+ 
  /*    int32_t milliAmps;          // in mA
   int32_t maxMilliAmps;       // in mA
   int32_t minMilliAmps;       // in mA
