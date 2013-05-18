@@ -7,9 +7,9 @@ OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print) {
 	_addr=addr;
 	varioData.paramKalman_r=200;  // sensor noise
 	varioData.paramKalman_q=0.05; // process noise
-    printer = &print; //operate on the address of print
+        printer = &print; //operate on the address of print
 	printer->begin(115200);
-	printer->print("Vario Sensor:MS5611 I2C Addr=");printer->println(_addr,HEX);
+	printer->print("Vario Sensor:MS5611 I2C Addr=");printer->println(addr,HEX);
 }
 
 // **************** Setup the MS5611 sensor *********************
