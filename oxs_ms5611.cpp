@@ -39,7 +39,7 @@ void OXS_MS5611::setup()
 
   }
   // Prefill buffers.
-  printer->print("Prefilling Vario Buffers...");
+  printer->print("Prefilling vario buffers...");
 
   for(int i = 1 ;i<=200;i++)readSensor();
   printer->println("done.");
