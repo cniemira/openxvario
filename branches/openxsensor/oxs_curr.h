@@ -36,6 +36,7 @@ class OXS_CURRENT {
      void SaveCurrent(long current);
      long getAverageCurrent();
      int readVccMv();
+     void prefillBuffer();
 };
 
 #endif // OXS_CURRENT_h

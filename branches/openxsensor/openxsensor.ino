@@ -32,9 +32,12 @@ void setup(){
 
   oxs_MS5611.setup();
   Serial.println("back MS5611 from setup");
-    
-  oxs_Current.setupMinMaxA(-13514,13514);
   oxs_Current.setupIdleMvA( 2500,185);
+   
+  oxs_Current.setupMinMaxA(-13469,13559);
+
+
+
   oxs_OutFrsky.setup();
 
 }
@@ -51,7 +54,7 @@ void loop(){
   oxs_Current.readSensor();
   
   loopcnt+=1;
-  if (millis()>LastOutputMs+1){ // invoke output routines every 50ms if there's something new to do.
+  if (millis()>LastOutputMs+300){ // invoke output routines every 50ms if there's something new to do.
     //Serial.print("loopMs=");  Serial.print(  (millis()-LastOutputMs) / loopcnt);Serial.print("  ;");
     loopcnt=0; LastOutputMs=millis();  
     
@@ -66,7 +69,7 @@ void loop(){
 }
 
 void OutputToSerial(VARIODATA &varioData,CURRENTDATA &currentDData){
-    /* Serial.print("mBar=");    Serial.print( ( ((float)(int32_t)(varioData.pressure))) /100);
+   Serial.print("mBar=");    Serial.print( ( ((float)(int32_t)(varioData.pressure))) /100);
     Serial.print(";relAlt=");  Serial.print( ( (float)varioData.relativeAlt)/100);
     
     Serial.print("  ;absAlt=");  Serial.print( ( (float)varioData.absoluteAlt)/100);
@@ -80,9 +83,11 @@ void OutputToSerial(VARIODATA &varioData,CURRENTDATA &currentDData){
     Serial.print(")");
    
     Serial.print("  ;Temperature=");    Serial.print((float)varioData.temperature/10);
-    Serial.println();
-    */
-    Serial.print("  ;mA=");    Serial.print( ( ((float)(int32_t)(currentDData.milliAmps))) /1000);
+   
+    Serial.print("  ;mA=");    Serial.print( ( ((float)(int32_t)(currentDData.milliAmps))) );
+    Serial.print("(");    Serial.print(  ( ((float)(int32_t)(currentDData.minMilliAmps))) );
+    Serial.print("..");    Serial.print( ( ((float)(int32_t)(currentDData.maxMilliAmps))) );
+    Serial.print(")");
     Serial.print("  ;mAh=");  Serial.print( currentDData.consumedMilliAmps);
     Serial.println();
  

@@ -2,7 +2,7 @@
 #include "oxs_curr.h"
 #include "HardwareSerial.h"
 long _currentValues[CURRENT_BUFFER_LENGTH +1];  // Averaging buffer for the measured current values
-    
+//
 OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print) {
   // constructor
   printer = &print; //operate on the address of print
@@ -20,12 +20,12 @@ void OXS_CURRENT::setupMinMaxA( int32_t milliAmps0V,int32_t milliAmps5V)
 {
   currentData.milliAmps0V=milliAmps0V;
   currentData.milliAmps5V=milliAmps5V;
- 
+
   currentData.milliVoltPerAmpere=5000/  ((milliAmps5V-milliAmps0V)/1000);
   currentData.idleMilliVolts=abs((int32_t)milliAmps0V)*(int32_t)currentData.milliVoltPerAmpere/1000;
 
   debugSendSetup();
-  resetValues();
+  prefillBuffer();
 }
 void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpere)
 {
@@ -35,8 +35,17 @@ void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpe
   currentData.milliAmps5V=(1000*(5000-(int32_t)idleMilliVolts))/(int32_t)milliVoltPerAmpere;
 
   //=(int32_t)idleMilliVolts/(int32_t)milliVoltPerAmpere*1000*-1
-  
+
   debugSendSetup();
+  prefillBuffer();
+}
+void OXS_CURRENT::prefillBuffer()
+{
+  // Prefill buffers.
+  printer->print("Prefilling current buffers...");
+
+  for (int i=0;i<CURRENT_BUFFER_LENGTH;i++) readSensor();;
+  printer->println("done.");
   resetValues();
 }
 /****************************************************************/
@@ -59,29 +68,36 @@ void OXS_CURRENT::debugSendSetup()
 
 void OXS_CURRENT::readSensor()
 {
-    static unsigned long UpdateMs=0;
-    uint16_t value=uint16_t((float)analogRead(_pinCurrent)*(float)(readVccMv()/1023.0));
-    currentData.available=true;
-    
-    /*printer->print(" !!value=");    printer->print(value);
-    printer->print(" !!current=");    printer->println(map(value,0,readVccMv(),currentData.milliAmps0V,currentData.milliAmps5V));
-    printer->print(" !!mA=");    printer->println(getAverageCurrent());
-*/    SaveCurrent(map(value,0,readVccMv(),currentData.milliAmps0V,currentData.milliAmps5V)); // save the current measurements...
-    if (millis()>UpdateMs+1000){
-      UpdateMs=millis();
-      if (_microsLastCurrent>0){  // internal mAh calculation
-        unsigned long micrPassed=micros()-_microsLastCurrent;
-        _microsLastCurrent=micros();
-        Serial.print(" MicrosPassed="); Serial.print(micrPassed);
-        float tmp1=(60*60);
-        printer->print(" A/SEC=");  printer->print((currentData.milliAmps/tmp1),DEC);
-        printer->print(" mAh+=");  printer->print( ( (currentData.milliAmps/tmp1)*micrPassed)/1000000,DEC);
-        currentData.consumedMilliAmps+=( (currentData.milliAmps/tmp1)*micrPassed)/1000000;
-      }
-   
+  static unsigned long UpdateMs=0;
+  int vcc=readVccMv();
+  uint16_t value=uint16_t((float)analogRead(_pinCurrent)*(float)(vcc/1023.0));
+ 
+ currentData.available=true;
+
+  SaveCurrent(map(value,0,vcc,currentData.milliAmps0V,currentData.milliAmps5V)); // save the current measurements...
+  
+  // calculate the consumed milliAmps every <n> ms
+  if (millis()>UpdateMs+100){
+    UpdateMs=millis();
+    if (_microsLastCurrent>0){  // internal mAh calculation
+      unsigned long micrPassed=micros()-_microsLastCurrent;
+      _microsLastCurrent=micros();
+      /*Serial.print(" MicrosPassed="); 
+      Serial.print(micrPassed);*/
+      float tmp1=(60*60);
+      /*printer->print(" A/SEC=");  
+      printer->print((currentData.milliAmps/tmp1),DEC);
+      printer->print(" mAh+=");  
+      printer->print( ( (currentData.milliAmps/tmp1)*micrPassed)/1000000,DEC);
+      */
+      currentData.consumedMilliAmps+=( (currentData.milliAmps/tmp1)*micrPassed)/1000000;
+    }
+
     _microsLastCurrent=micros();
     currentData.milliAmps=getAverageCurrent();
-    }
+    if(currentData.minMilliAmps>currentData.milliAmps)currentData.minMilliAmps=currentData.milliAmps;
+    if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;
+  }
 }
 
 
@@ -94,7 +110,7 @@ void OXS_CURRENT::SaveCurrent(long current){
   static int cnt =0;
   _currentValues[cnt++]=current;
   if(cnt>CURRENT_BUFFER_LENGTH){
-      cnt=0;
+    cnt=0;
   }
 }
 /****************************************************************/
@@ -116,7 +132,7 @@ void OXS_CURRENT::resetValues(){
 }
 
 /* readVcc - Read the real internal supply voltageof the arduino 
-
+ 
  Improving Accuracy
  While the large tolerance of the internal 1.1 volt reference greatly limits the accuracy 
  of this measurement, for individual projects we can compensate for greater accuracy. 
@@ -141,28 +157,28 @@ const long scaleConst = 1125.300 * 1000 ; // internalRef * 1023 * 1000;
 int OXS_CURRENT::readVccMv() {
   // Read 1.1V reference against AVcc
   // set the reference to Vcc and the measurement to the internal 1.1V reference
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-  ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-  ADMUX = _BV(MUX5) | _BV(MUX0);
-#elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-  ADMUX = _BV(MUX3) | _BV(MUX2);
-#else
-  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#endif  
-
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+    ADMUX = _BV(MUX5) | _BV(MUX0);
+  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = _BV(MUX3) | _BV(MUX2);
+  #else
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #endif  
+ 
   delay(2); // Wait for Vref to settle
   ADCSRA |= _BV(ADSC); // Start conversion
   while (bit_is_set(ADCSRA,ADSC)); // measuring
-
+ 
   uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
   uint8_t high = ADCH; // unlocks both
-
+ 
   long result = (high<<8) | low;
-
-  //result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  result = scaleConst / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  return (int)result; // Vcc in millivolts
+ 
+  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+  return result; // Vcc in millivolts
 }
+
 
 
