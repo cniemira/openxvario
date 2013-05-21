@@ -51,8 +51,8 @@
 class OXS_OUT_FRSKY {
   public:
     OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print);
-    VARIODATA varioData ;
-    CURRENTDATA currentData ;
+    VARIODATA* varioData ;
+    CURRENTDATA* currentData ;
     void setup();
     void sendData();    
 	
@@ -69,6 +69,7 @@ class OXS_OUT_FRSKY {
     void SendRPM(uint16_t rpm) ;
     void SendAlt(long altcm);
     void SendGPSAlt(long altcm);
+    void SendFuel(uint16_t fuel);
     void SendCurrentMilliAmps(int32_t milliamps);
     SoftwareSerial _mySerial;
     

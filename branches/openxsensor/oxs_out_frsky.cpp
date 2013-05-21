@@ -8,7 +8,7 @@
 
 
 OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print) : 
-_mySerial(SoftwareSerial(0,pinTx,true))
+_mySerial(SoftwareSerial(0,pinTx,true))  // the true is inverting the signal of the RS232 interface
 {
   // constructor
   _pinTx=pinTx;
@@ -24,10 +24,12 @@ void OXS_OUT_FRSKY::setup()
 
   _mySerial=SoftwareSerial(0, _pinTx,true); // RX, TX
   _mySerial.begin(9600);
+#ifdef DEBUG
   printer->begin(115200);
   printer->print("FRSky Output Module: TX Pin=");
   printer->println(_pinTx);
   printer->println("FRSky Output Module: Setup!");
+#endif
 }
 
 /****************************************************************/
@@ -50,65 +52,107 @@ void OXS_OUT_FRSKY::sendData()
 }
 // Send Frame 1 via serial
 void OXS_OUT_FRSKY::SendFrame1(){
+#ifdef DEBUG
   printer->print("FRSky output module: SendFrame1:");
-  if (varioData.available){ //========================================================================== Vario Data
-    printer->print("Sending vario data ");
-    SendAlt(varioData.absoluteAlt);    
-    SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData.climbRate); // ClimbRate in open9x Vario mode
-    // ********************************* The DIST Field
+#endif
+  if (varioData!=NULL){
+    if (varioData->available){ //========================================================================== Vario Data
+#ifdef DEBUG
+      printer->print("Sending vario data ");
+#endif
+      SendAlt(varioData->absoluteAlt);    
+      //SendAlt(0);    
+
+      SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
+      // ********************************* The DIST Field
 #ifdef SEND_AltAsDIST     // send alt as adjusted to precision in dist field
-    if (varioData.absoluteAlt- SEND_AltAsDIST <= 32768) SendGPSDist(uint16_t(varioData.absoluteAlt- SEND_AltAsDIST ));
-    else if (varioData.absoluteAlt- SEND_AltAsDIST < 327680) SendGPSDist(uint16_t((varioData.absoluteAlt-SEND_AltAsDIST)/(long)10));
-    // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
-    else SendGPSDist(uint16_t((varioData.absoluteAlt-SEND_AltAsDIST)/(long)100));
+      if (varioData->absoluteAlt- SEND_AltAsDIST <= 32768) SendGPSDist(uint16_t(varioData->absoluteAlt- SEND_AltAsDIST ));
+      else if (varioData->absoluteAlt- SEND_AltAsDIST < 327680) SendGPSDist(uint16_t((varioData->absoluteAlt-SEND_AltAsDIST)/(long)10));
+      // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
+      else SendGPSDist(uint16_t((varioData->absoluteAlt-SEND_AltAsDIST)/(long)100));
 #endif 
 #ifdef SEND_PressureAsDIST
-    SendGPSDist(uint16_t(varioData.pressure/10));
+      SendGPSDist(uint16_t(varioData->pressure/10));
 #endif
 #ifdef SEND_SensitivityAsDist
-    SendGPSDist(uint16_t(varioData.paramKalman_r));
+      SendGPSDist(uint16_t(varioData->paramKalman_r));
 #endif
-    // ********************************* The RPM Field   
+
+      // ********************************** The Fuel Field
+#ifdef SEND_SensitivityAsFuel
+      SendFuel(uint16_t(varioData->paramKalman_r));
+#endif
+#ifdef SEND_PressureAsFuel
+      SendFuel(uint16_t(varioData->pressure/100));
+#endif
+      // ********************************* The RPM Field   
 #ifdef SEND_AltAsRPM     
-    SendRPM(varioData.absoluteAlt);
+      SendRPM(varioData->absoluteAlt);
 #endif
 #ifdef SEND_PressureAsRPM
-    SendRPM(uint16_t(varioData.pressure/10));
+      SendRPM(uint16_t(varioData->pressure/10));
 #endif
 #ifdef SEND_SensitivityAsRPM
-    SendRPM(uint16_t(varioData.paramKalman_r));
+      SendRPM(uint16_t(varioData->paramKalman_r));
 #endif
-    // ********************************* The Temp 1 FIeld
+      // ********************************* The Temp 1 FIeld
 #ifdef SEND_TEMP_T1      
-      SendTemperature1(varioData.temperature); 
-#endif
-#ifdef SEND_PressureAsT1 // pressure in T1 Field
-      SendTemperature1(varioData.pressure-SEND_PressureAsT1*10); //pressure in T1 Field
+      SendTemperature1(varioData->temperature/10); 
 #endif
 
-    // ********************************* The Temp 2 FIeld
+#ifdef SEND_PressureAsT1 // pressure in T1 Field
+      SendTemperature1((varioData->pressure-SEND_PressureAsT1)/10); //pressure in T1 Field
+#endif
+
+      // ********************************* The Temp 2 FIeld
 #ifdef SEND_TEMP_T2      
-    SendTemperature2(varioData.temperature); 
+      SendTemperature2(varioData->temperature); 
 #endif
 #ifdef SEND_SensitivityAsT2 // Kalman Param R in Temp2
-    SendTemperature2(uint16_t(varioData.paramKalman_r)*10); 
+      SendTemperature2(uint16_t(varioData->paramKalman_r)); 
 #endif
 #ifdef SEND_PressureAsT2 // pressure in T2 Field
-    SendTemperature2(varioData.pressure-SEND_PressureAsT2*10); //pressure in T2 Field
+      SendTemperature2((varioData->pressure) /10 -SEND_PressureAsT2); //pressure in T2 Field reduced by offset
 #endif
-  }else {
-    printer->print("No vario data Available!");
-  }
+    }
+    else {
+#ifdef DEBUG
+      printer->print("No vario data Available!");
+#endif
+    }// if (varioData->available){ 
+  } //(varioData==NULL)
+  if (currentData!=NULL){
+    if (varioData->available){ //========================================================================== Current Data
+#ifdef DEBUG
+      printer->print("Sending current data:");      
+      printer->println(currentData->milliAmps);
+#endif
+      SendCurrentMilliAmps(currentData->milliAmps);    
+#ifdef SEND_mAhAsDist
+      SendGPSDist(uint16_t(currentData->consumedMilliAmps));
+#endif
+#ifdef SEND_mAhAsFuel
+      SendFuel(uint16_t(currentData->consumedMilliAmps));
+#endif
+#ifdef SEND_mAhPercentageAsFuel
+      SendFuel( uint16_t(  constrain(map(currentData->consumedMilliAmps,SEND_mAhPercentageAsFuel,0,0,100) ,0,100  ) ) );
+#endif
 
+    } // if (currentData->available){ 
+  } // if(currentData==NULL)
   _mySerial.write(0x5E); // End of Frame 1!
+#ifdef DEBUG
   printer->print("absoluteAlt=");    
-  printer->println( ( ((float)(int32_t)(varioData.absoluteAlt))) /100);
+  printer->println( ( ((float)(int32_t)(varioData->absoluteAlt))) /100);
+#endif
 }
 // Send Frame 2 via serial
 void OXS_OUT_FRSKY::SendFrame2(){
+#ifdef DEBUG
   printer->print("FRSky Output Module: SendFrame2!");
   printer->print("mBar=");    
-  printer->println( ( ((float)(int32_t)(varioData.pressure))) /100);
+  printer->println( ( ((float)(int32_t)(varioData->pressure))) /100);
+#endif
 }
 
 /**********************************************************/
@@ -160,11 +204,16 @@ void OXS_OUT_FRSKY::SendCellVoltage(uint8_t cellID, uint16_t voltage) {
 void OXS_OUT_FRSKY::SendGPSDist(uint16_t dist) {// ==> Field "Dist" in open9x
   SendValue(0x3C,uint16_t(dist)); //>> DIST
 }
+
+/************************************************************/
+/* SendTemperature1/2 =>  tempc in 1/100th of degree celsius */
+/* Display Range in openTX: -3276,8..32768=-3276,8C..+3276,C */
+/************************************************************/
 void OXS_OUT_FRSKY::SendTemperature1(int16_t tempc) {
-  SendValue(FRSKY_USERDATA_TEMP1, tempc/10);
+  SendValue(FRSKY_USERDATA_TEMP1, tempc);
 }
 void OXS_OUT_FRSKY::SendTemperature2(int16_t tempc) {
-  SendValue(FRSKY_USERDATA_TEMP2, tempc/10);
+  SendValue(FRSKY_USERDATA_TEMP2, tempc);
 }
 /*************************************/
 /* SendRPM => Send Rounds Per Minute */
@@ -173,6 +222,13 @@ void OXS_OUT_FRSKY::SendRPM(uint16_t rpm) {
   byte blades=2;
   rpm = uint16_t((float)rpm/(60/blades));  
   SendValue(FRSKY_USERDATA_RPM, rpm);
+}
+
+/*************************************/
+/* SendFuel => SendFuel Level        */
+/*************************************/
+void OXS_OUT_FRSKY::SendFuel(uint16_t fuel) {
+  SendValue(FRSKY_USERDATA_FUEL, fuel);
 }
 
 /**********************************/
@@ -191,28 +247,51 @@ void OXS_OUT_FRSKY::SendAlt(long altcm)
   Meter=Meter/100;
 
 
-  SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
-  SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
+  // SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
+  // SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
+  SendValue(FRSKY_USERDATA_BARO_ALT_B, 0);
+  SendValue(FRSKY_USERDATA_BARO_ALT_A,0);
 }
 /****************************************************************/
 /* SendGPSAlt - send the a value to the GPS altitude field      */
+/* parameter: altitude in cm between -3276800 and 3276799       */
+/* cm will not be displayed                                     */
 /****************************************************************/
 void OXS_OUT_FRSKY::SendGPSAlt(long altcm)
 {
-  uint16_t Centimeter =  uint16_t(altcm%100);
-  int16_t Meter = int16_t((altcm-Centimeter)/100);
+  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
+  long Meter;
+  if (altcm >0){
+    Meter = (altcm-(long)Centimeter);
+  }
+  else{
+    Meter = -1*(abs(altcm)+(long)Centimeter);
+  }
+  Meter=Meter/100;
 
+  // need to send a gps fix before openTX displays this field....
+  SendValue(FRSKY_USERDATA_GPS_LONG_A, 1);
+  SendValue(FRSKY_USERDATA_GPS_LONG_B, 1);
+  SendValue(FRSKY_USERDATA_GPS_LAT_A, 1);
+  SendValue(FRSKY_USERDATA_GPS_LAT_B, 1);
+  // now send the data
   SendValue(FRSKY_USERDATA_GPS_ALT_B, Meter);
   SendValue(FRSKY_USERDATA_GPS_ALT_A, Centimeter);
 }
-/*************************************/
-/* SendCurrentMilliAmps => Send Current       */
-/*************************************/
+/***********************************************/
+/* SendCurrentMilliAmps => Send Current        */
+/* current will be transmitted as 1/10th of A  */
+/* Range: -32768..32767 => disp -327,6..3276,7 */
+/***********************************************/
 void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps) 
 {
-  #ifdef ForceAbsolutCurrent
-     milliamps=abs(milliamps);
-  #endif 
+#ifdef ForceAbsolutCurrent
+  milliamps=abs(milliamps);
+#endif 
   SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
 }
+
+
+
+
 
