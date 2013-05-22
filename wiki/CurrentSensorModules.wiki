@@ -79,3 +79,14 @@ uncommenting the following define:
 }}}
 
 This enables the use of real capacity monitoring in models using very small batteries like DLGs or micro planes.
+
+== Adding a filter capacitor ==
+note: this is optional and not required for the sensor to work... it just gives better results...
+One tip for the chinese ACS-712 modules:
+The modules i bought from various chinese ebay sellers all came without a filter capacitor installed. The datasheet documents the possibility to add a filter capacitor to the circuit. I manually soldered a small 47nF SMD capacitor directly on the 2 pins GND and Filter of the ACS712 on my 5A board. This greatly reduces noise and therefore increases the precision of the sensor. So my recommendations is to install this capacitor!
+
+Heres a pic showing where to install it:
+
+https://openxvario.googlecode.com/svn/wiki/images/acs712filter.png
+
+Rainer.
