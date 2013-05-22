@@ -175,7 +175,7 @@ void OXS_MS5611::calcAltitude() {
 void OXS_MS5611::SaveClimbRate(float alti){
   long now=micros();
   static long lastMicrosVerticalSpeed=micros();
-  long timecalc=now-lastMicrosVerticalSpeed; // the time passed since last CR Calculation
+  unsigned long timecalc=now-lastMicrosVerticalSpeed; // the time passed since last CR Calculation
   static float lastAlti=alti;
   static byte cnt=0;
   lastMicrosVerticalSpeed=now;

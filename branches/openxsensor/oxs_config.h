@@ -109,7 +109,7 @@
 const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout board 
 // (normally 0x76 or 0x77 configured on the MS5611 module 
 // via a solder pin or fixed)
-//#define PIN_PushButton     10  // an optional push button to control the oXv          
+#define PIN_PushButton     10  // an optional push button to control the oXv          
 // comment out to cpmpletly disable button code
 #define PIN_LED            13  // The Signal LED (default=13=onboard LED)
 
@@ -121,8 +121,10 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 //#define MinCurrentMilliamps -13510    // the lowest measured current (=0v input voltage)
 //#define MaxCurrentMilliamps 13510     // the hioghest measured current (= input voltage= vRef)
 
-#define IdleMillivolts 2500
-#define MillivoltsPerAmpere 185
+//#define IdleMillivolts 2500
+//#define MillivoltsPerAmpere 185
+#define IdleMillivolts 490
+#define MillivoltsPerAmpere 133
 
 
 //#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.: -4.5A => +4.5A)
@@ -140,7 +142,7 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 /* By doing this we will get ongoing data counts even if the you turn off the modell   */
 /* between flights                                                                     */
 /***************************************************************************************/
-//#define SAVE_TO_EEPROM
+#define SAVE_TO_EEPROM
 
 
 #endif

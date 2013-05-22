@@ -26,6 +26,7 @@ void OXS_CURRENT::setupMinMaxA( int32_t milliAmps0V,int32_t milliAmps5V)
 
   debugSendSetup();
   prefillBuffer();
+  resetValues();
 }
 void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpere)
 {
@@ -38,14 +39,18 @@ void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpe
 
   debugSendSetup();
   prefillBuffer();
+  resetValues();
 }
 void OXS_CURRENT::prefillBuffer()
 {
   // Prefill buffers.
   printer->print("Prefilling current buffers...");
 
-  for (int i=0;i<CURRENT_BUFFER_LENGTH;i++) readSensor();
-  ;
+  for (int i=0;i<CURRENT_BUFFER_LENGTH;i++){
+    delay(10);
+     readSensor();
+  }
+  
   printer->println("done.");
   resetValues();
 }
