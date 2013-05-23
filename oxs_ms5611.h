@@ -6,7 +6,7 @@
 
 #define PressureCalibrationOffset 0
 #define EXTRA_PRECISION 5
-#define ClimbRateQueueLength 15 // averaging buffer for the climbrate
+#define ClimbRateQueueLength 20 // averaging buffer for the climbrate
 struct VARIODATA {
   bool available;          // true if data is available
   float pressure;          // in 1/100 mBar
@@ -26,7 +26,7 @@ struct VARIODATA {
 };
 class OXS_MS5611 {
 public:
-  OXS_MS5611(uint8_t addr, HardwareSerial &print);
+  OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r);
   VARIODATA varioData ;
   float rawPressure; // in 1/100 mBar
 
@@ -52,13 +52,15 @@ private:
   long getData(byte command, byte del);
   HardwareSerial* printer;
   void kalman_update(float measurement);
-  float _climbRateQueue[ClimbRateQueueLength ];
+  float _climbRateQueue[ClimbRateQueueLength+1 ];
   void SaveClimbRate(float alti);
   void calcAltitude();
   void calcClimbRate();
   //float _altOffset;
-  float _absoluteAlt;
-  float _relativeAlt;
+  //float _absoluteAlt;
+  //float _relativeAlt;
+  int16_t _calcTemperature;     // in 1/10 Celsius only used for alt calculation. 
+
 };
 
 #endif // OXS_MS5611
