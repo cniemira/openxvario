@@ -37,7 +37,7 @@
 /* ==> choose freely one value per Telemetry field                                     */
 /***************************************************************************************/
 //**************** the DIST field (GPS Distance) (choose only one)**********************/
-//#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
+#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
 // be subtracted from the actual height for higher display precision.
 // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7)
 // if we subtract 300 display will be 156 78
@@ -45,7 +45,7 @@
 //  will only be transmitted up to an altitude of 327.68 m
 //#define SEND_SensitivityAsDist // sensitivity in DIST
 //#define SEND_PressureAsDIST    // pressure in DIST field
-#define SEND_mAhAsDist
+//#define SEND_mAhAsDist
 
 //**************** the FUEL field  (choose only one)**********************/
 //#define SEND_SensitivityAsFuel // sensitivity in DIST
@@ -105,13 +105,27 @@
 #define PIN_AnalogClimbRate 3  // 3 the pin used to optionally write the data to the frsky a1 or a2 pin (could be 3,5,6,9,10,11)
 #define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
 // you can uncomment this line if you want to completly disable the remote control functionality
-#define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
+//#define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
 const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout board 
 // (normally 0x76 or 0x77 configured on the MS5611 module 
 // via a solder pin or fixed)
 #define PIN_PushButton     10  // an optional push button to control the oXv          
 // comment out to cpmpletly disable button code
 #define PIN_LED            13  // The Signal LED (default=13=onboard LED)
+
+/***************************************************************************************/
+/* sensitivity / data filtering / Kalman filter parameters                             */
+/* The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can */
+/* be adjusted by changing the value Q (process Noise)                                 */
+/***************************************************************************************/
+#define KALMAN_R 300  // default:300   change this value if you want to adjust the default sensitivity!
+                      // this will only be used if PIN_PPM is NOT defined
+                      //  50 = fast but lot of errors (good for sensor testing...but quite a lot of noise)
+                      // 300 = medium speed and less false indications (nice medium setting with 
+                      //       a silence window (indoor)of -0.2 to +0.2)
+                      // 1000 = conservative setting ;-)
+                      // 500 = still useable maybe for a slow flyer?
+                      // .. everything inbetween in relation to these values.
 
 /***************************************************************************************/
 /* Optional Feature Current Mesaurement                                                */
@@ -121,10 +135,10 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 //#define MinCurrentMilliamps -13510    // the lowest measured current (=0v input voltage)
 //#define MaxCurrentMilliamps 13510     // the hioghest measured current (= input voltage= vRef)
 
-//#define IdleMillivolts 2500
-//#define MillivoltsPerAmpere 185
-#define IdleMillivolts 490
-#define MillivoltsPerAmpere 133
+#define IdleMillivolts 2500
+#define MillivoltsPerAmpere 185
+//#define IdleMillivolts 490
+//#define MillivoltsPerAmpere 133
 
 
 //#define ForceAbsolutCurrent  // If defined, all measured current values will be forced to be positive (e.g.: -4.5A => +4.5A)
@@ -134,6 +148,25 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 // -20A .. +20A  -25000	 25000
 // -30A .. +30A  -37879	 37879
 
+/***************************************************************************************/
+/* Parameters for the remote control option of the vario sensitivity                   */
+/* These are parameters that can be used to fine tune the behaviour.                   */
+/* ==>read the WiKi for details.                                                       */
+/***************************************************************************************/
+// These 2 values control on which ppm signal the programming mode will be initiated 
+// a normal servo channel will be in the range of 1000..2000 microseconds
+#define PPM_ProgrammingMode_minppm 900   // Pulse legth in microseconds 
+#define PPM_ProgrammingMode_maxppm 1100  // Pulse legth in microseconds 
+
+#define PPM_Range_min 981   // the toatal range min of the ppm input (Pulse legth in microseconds )
+#define PPM_Range_max 1999  // the toatal range max of the ppm input (Pulse legth in microseconds )
+
+
+#define PPM_ProgrammingMode_Seconds 30   // the programming mode lasts 30 seconds
+// The KALMAN_R_MIN+MAX Parameters define the range in wehich you will be able to adjust 
+// the sensitivity using your transmitter
+#define KALMAN_R_MIN 50     // 1    the min value for KALMAN_R
+#define KALMAN_R_MAX 1000  // 1000 the max value for KALMAN_R
 
 /***************************************************************************************/
 /* Optional Feature: Persistent memory.                                                */
@@ -142,7 +175,7 @@ const int I2CAdd=        0x77; // 0x77 The I2C Address of the MS5611 breakout bo
 /* By doing this we will get ongoing data counts even if the you turn off the modell   */
 /* between flights                                                                     */
 /***************************************************************************************/
-#define SAVE_TO_EEPROM
+//#define SAVE_TO_EEPROM
 
 
 #endif

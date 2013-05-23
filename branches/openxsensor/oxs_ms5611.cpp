@@ -2,10 +2,10 @@
 #include "OXS_MS5611.h"
 #include "HardwareSerial.h"
 
-OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print) {
+OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r) {
   // constructor
   _addr=addr;
-  varioData.paramKalman_r=300;  // sensor noise
+  varioData.paramKalman_r=kalman_r;  // sensor noise
   varioData.paramKalman_q=0.05; // process noise
   printer = &print; //operate on the address of print
   printer->begin(115200);
@@ -94,13 +94,13 @@ float OXS_MS5611::readSensor()
   int64_t D2, dT, P;
   float TEMP;
   int64_t OFF, SENS;
-
   D1 = getData(0x48, 9); //OSR=4096 0.012 mbar precsision
   D2 = getData(0x50, 1);
-
+ 
   dT = D2 - ((long)_calibrationData[5] << 8);
   TEMP = (2000 + (((int64_t)dT * (int64_t)_calibrationData[6]) >> 23)) / (float)100;
   varioData.temperature=(int)(TEMP*10);
+  if (_calcTemperature==0)_calcTemperature==varioData.temperature;
   /*
   OFF = ((unsigned long)_calibrationData[2] << 16) + (((int64_t)_calibrationData[4] * dT) >> 7);
    SENS = ((unsigned long)_calibrationData[1] << 15) + (((int64_t)_calibrationData[3] * dT) >> 8);
@@ -155,16 +155,17 @@ void OXS_MS5611::kalman_update(float measurement)
 /****************************************************************/
 void OXS_MS5611::calcAltitude() {
   float   result;
-  int32_t t1=varioData.temperature/100;
+  //int32_t t1=varioData.temperature/10;
+  int32_t t1=_calcTemperature/10; // only use the first measured temperature for calculation
   result=(float)varioData.pressure/100;
   const float sea_press = 1013.25;
-  result=(((pow((sea_press / result), 1/5.257) - 1.0) * ( (t1) + 273.15)) / 0.0065 *100);
+  result=(((pow((sea_press / result), 1/5.257) - 1.0) * ( (t1/100) + 273.15)) / 0.0065 *100);
   SaveClimbRate(result);
-  _absoluteAlt=result;
-  _relativeAlt=_absoluteAlt- varioData.altOffset;
+  //_absoluteAlt=result;
+  //_relativeAlt=_absoluteAlt- varioData.altOffset;
 
-  varioData.absoluteAlt=(int32_t)_absoluteAlt;
-  varioData.relativeAlt=(int32_t)_relativeAlt;
+  varioData.absoluteAlt=(int32_t)result;
+  varioData.relativeAlt=varioData.absoluteAlt- varioData.altOffset;
   if(varioData.maxAbsAlt<varioData.absoluteAlt)varioData.maxAbsAlt=varioData.absoluteAlt;
   if(varioData.minAbsAlt>varioData.absoluteAlt)varioData.minAbsAlt=varioData.absoluteAlt;
 }
@@ -173,18 +174,22 @@ void OXS_MS5611::calcAltitude() {
 /* GetClimbRate = > Retrieve the average climbRate from the buffer             */
 /*******************************************************************************/
 void OXS_MS5611::SaveClimbRate(float alti){
-  long now=micros();
-  static long lastMicrosVerticalSpeed=micros();
+  unsigned long now=micros();
+  static unsigned long lastMicrosVerticalSpeed=now;
   unsigned long timecalc=now-lastMicrosVerticalSpeed; // the time passed since last CR Calculation
   static float lastAlti=alti;
   static byte cnt=0;
+  
   lastMicrosVerticalSpeed=now;
   float CurrentClimbRate=(float)(alti-lastAlti)*((float)1000000/(float)timecalc);
   _climbRateQueue[cnt]=CurrentClimbRate; // store the current ClimbRate
   cnt+=1;
-  if (cnt ==ClimbRateQueueLength)cnt=0;
+  if (cnt ==ClimbRateQueueLength){
+    cnt=0;
+    calcClimbRate();
+  }
   lastAlti=alti;
-  calcClimbRate();
+  //calcClimbRate();
 }
 /* calc the average climbRate */
 void OXS_MS5611::calcClimbRate(){
