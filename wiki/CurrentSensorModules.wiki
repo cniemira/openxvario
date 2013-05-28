@@ -94,4 +94,5 @@ And here is a picture taken by flaps showing how to mount it:
 https://openxvario.googlecode.com/svn-history/r183/wiki/images/ACS712WithCapacitor.JPG
 
 Some of the coating on the ground plane was removed to fit the capacitor and allow easy soldering.
+
 Rainer.
