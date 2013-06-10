@@ -28,44 +28,49 @@ void OXS_MS5611::setup()
     Wire.beginTransmission(_addr);  
     Wire.requestFrom((uint8_t)_addr, (uint8_t)2);
     if(Wire.available()!=2) {
+#ifdef DEBUG
       printer->println("Error: calibration data not available");
+#endif
     }
     high = Wire.read();
     low = Wire.read();
     _calibrationData[i] = high<<8 | low;
+#ifdef DEBUG
+
     printer->print("calibration data #");
     printer->print(i);
     printer->print(" = ");
     printer->println( _calibrationData[i] ); 
-
+#endif
   }
   // Prefill buffers.
   printer->print("Prefilling vario buffers...");
-
-  for(int i = 1 ;i<=400;i++)readSensor();
+  unsigned long prefillMillis=millis();
+#ifndef DEBUG  while(millis()<prefillMillis+10000)readSensor();
   printer->println("done.");
-
+#endif
   resetValues();
 }
 /****************************************************************/
 /* getData - Read data from I2C bus                             */
 /****************************************************************/
-long OXS_MS5611::getData(byte command, byte del)
-{
-  long result = 0;
-  SendCommand(command);
-  delay(del);
-  SendCommand(0x00);
-  Wire.beginTransmission(_addr);  
-  Wire.requestFrom(_addr,(uint8_t) 3);
-
-#ifdef DEBUG
-  if(Wire.available()!=3)printer->println("Error: raw data not available");
-#endif
-
-  for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
-  return result;
-}
+/*long OXS_MS5611::getData(byte command, byte del)
+ {
+ long result = 0;
+ SendCommand(command);
+ delay(del);
+ SendCommand(0x00);
+ Wire.beginTransmission(_addr);  
+ Wire.requestFrom(_addr,(uint8_t) 3);
+ 
+ #ifdef DEBUG
+ if(Wire.available()!=3)printer->println("Error: raw data not available");
+ #endif
+ 
+ for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
+ return result;
+ }
+ */
 
 
 /****************************************************************/
@@ -76,58 +81,93 @@ void OXS_MS5611::SendCommand(byte command)
 {
   Wire.beginTransmission(_addr);
   if (!Wire.write(command)){
+#ifdef DEBUG
+
     printer->println("Error: write()");
+#endif 
   }
   if (Wire.endTransmission()) 
   {
+#ifdef DEBUG
     printer->print("Error when sending command: ");
     printer->println(command, HEX);
+#endif
   }
 }
 
 /****************************************************************/
 /* readSensor - Read pressure + temperature from the MS5611    */
 /****************************************************************/
-float OXS_MS5611::readSensor()
+int32_t D1;
+int64_t D2, dT, P;
+float TEMP;
+int64_t OFF, SENS;
+
+byte SensorState=0;
+unsigned long lastmicros;
+void OXS_MS5611::readSensor()
 {
-  int32_t D1;
-  int64_t D2, dT, P;
-  float TEMP;
-  int64_t OFF, SENS;
-  D1 = getData(0x48, 9); //OSR=4096 0.012 mbar precsision
-  D2 = getData(0x50, 1);
- 
-  dT = D2 - ((long)_calibrationData[5] << 8);
-  TEMP = (2000 + (((int64_t)dT * (int64_t)_calibrationData[6]) >> 23)) / (float)100;
-  varioData.temperature=(int)(TEMP*10);
-  if (_calcTemperature==0)_calcTemperature==varioData.temperature;
-  /*
-  OFF = ((unsigned long)_calibrationData[2] << 16) + (((int64_t)_calibrationData[4] * dT) >> 7);
-   SENS = ((unsigned long)_calibrationData[1] << 15) + (((int64_t)_calibrationData[3] * dT) >> 8);
-   P = (((D1 * SENS) >> 21) - OFF) >> 15;
-   */
+  if (SensorState==0) // ========================== Request Pressure
+  {
+    SendCommand(0x48);
+    lastmicros=micros();    
+    SensorState+=1;
+  }
+  else if (SensorState==1) // ========================== get Pressure value
+  {
+    if (micros()-lastmicros>=9000){
+      long result = 0;
+      SendCommand(0x00);
+      Wire.beginTransmission(_addr);  
+      Wire.requestFrom(_addr,(uint8_t) 3);
+#ifdef DEBUG
+      if(Wire.available()!=3)printer->println("Error: raw data not available");
+#endif
+      for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
+      D1=result;
+      SendCommand(0x50); // request Temperature
+      lastmicros=micros(); 
+      SensorState+=1;
+    }   
+  }
+  else if (SensorState==2) // =========================  Get Temperature Value
+  {
+    if (micros()-lastmicros>=1000){
+      long result = 0;
+      SendCommand(0x00);
+      Wire.beginTransmission(_addr);  
+      Wire.requestFrom(_addr,(uint8_t) 3);
+#ifdef DEBUG
+      if(Wire.available()!=3)printer->println("Error: raw data not available");
+#endif
+      for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
+      D2=result;
+      lastmicros=micros(); 
+      // Do Conversion
+      dT = D2 - ((long)_calibrationData[5] << 8);
+      TEMP = (2000 + (((int64_t)dT * (int64_t)_calibrationData[6]) >> 23)) / (float)100;
+      varioData.temperature=(int)(TEMP*10);
+      if (_calcTemperature==0)_calcTemperature=varioData.temperature;
 
-  //test
-  OFF  = (((int64_t)_calibrationData[2]) << 16) + ((_calibrationData[4] * dT) >> 7);
-  SENS = (((int64_t)_calibrationData[1]) << 15) + ((_calibrationData[3] * dT) >> 8);
-  P= ((((D1 * SENS) >> 21) - OFF) >> (15-EXTRA_PRECISION)) / ((1<<EXTRA_PRECISION) );
+      OFF  = (((int64_t)_calibrationData[2]) << 16) + ((_calibrationData[4] * dT) >> 7);
+      SENS = (((int64_t)_calibrationData[1]) << 15) + ((_calibrationData[3] * dT) >> 8);
+      P= ((((D1 * SENS) >> 21) - OFF) >> (15-EXTRA_PRECISION)) / ((1<<EXTRA_PRECISION) );
 
-  //rawPressure=P + PressureCalibrationOffset;
-  rawPressure=P ;
-  if (P>0)varioData.available=true;
-  else varioData.available=false;
-
-
-  kalman_update(rawPressure);
-  calcAltitude();
-  return rawPressure;
-
+      //rawPressure=P + PressureCalibrationOffset;
+      rawPressure=P ;
+      if (P>0)varioData.available=true;
+      else varioData.available=false;
+      kalman_update(rawPressure);
+      calcAltitude();
+      SensorState=0;
+    }   
+  }
 }
 
 void OXS_MS5611::kalman_update(float measurement)
 {
   static float x=rawPressure; //value
-  static float p=100; //estimation error covariance
+  static float p=200; //estimation error covariance
   static float k=0; //kalman gain
 
   // update the prediction value
@@ -141,7 +181,7 @@ void OXS_MS5611::kalman_update(float measurement)
 #ifdef KALMANDUMP
   abweichung=measurement -x;
   // output to processing.
-  Printer.print(rawalt);
+  printer.print(rawalt);
   printer->print(",");
   printer->print(x);
   printer->print(",");
@@ -161,6 +201,7 @@ void OXS_MS5611::calcAltitude() {
   const float sea_press = 1013.25;
   result=(((pow((sea_press / result), 1/5.257) - 1.0) * ( (t1/100) + 273.15)) / 0.0065 *100);
   SaveClimbRate(result);
+
   //_absoluteAlt=result;
   //_relativeAlt=_absoluteAlt- varioData.altOffset;
 
@@ -168,50 +209,68 @@ void OXS_MS5611::calcAltitude() {
   varioData.relativeAlt=varioData.absoluteAlt- varioData.altOffset;
   if(varioData.maxAbsAlt<varioData.absoluteAlt)varioData.maxAbsAlt=varioData.absoluteAlt;
   if(varioData.minAbsAlt>varioData.absoluteAlt)varioData.minAbsAlt=varioData.absoluteAlt;
+  if(varioData.maxRelAlt<varioData.relativeAlt)varioData.maxRelAlt=varioData.relativeAlt;
+  if(varioData.minRelAlt>varioData.relativeAlt)varioData.minRelAlt=varioData.relativeAlt;
 }
 /*******************************************************************************/
 /* SaveClimbRate => calculate the current climbRate                            */
 /* GetClimbRate = > Retrieve the average climbRate from the buffer             */
 /*******************************************************************************/
+
 void OXS_MS5611::SaveClimbRate(float alti){
-  unsigned long now=micros();
-  static unsigned long lastMicrosVerticalSpeed=now;
-  unsigned long timecalc=now-lastMicrosVerticalSpeed; // the time passed since last CR Calculation
+  static unsigned long Start=micros();
   static float lastAlti=alti;
+  static float MaxDiff=-1000;
+  static float MinDiff=1000;
+  static float sumAlti=0;
   static byte cnt=0;
-  
-  lastMicrosVerticalSpeed=now;
-  float CurrentClimbRate=(float)(alti-lastAlti)*((float)1000000/(float)timecalc);
-  _climbRateQueue[cnt]=CurrentClimbRate; // store the current ClimbRate
+  if(MaxDiff < (alti-lastAlti))MaxDiff=alti-lastAlti;
+  if(MinDiff > (alti-lastAlti))MinDiff=alti-lastAlti;
+  sumAlti+=(alti-lastAlti);
+  /*  printer->print("timecalc=");    printer->print(timecalc);
+   printer->print(" alti=");    printer->print(alti);
+   printer->print(" lastAlti=");    printer->print(lastAlti);
+   printer->print(" alti-lastAlti=");    printer->print(alti-lastAlti);
+   float CurrentClimbRate=(float)(alti-lastAlti)*((float)1000000/(float)timecalc);
+   printer->print("CurrentClimbRate=");    printer->println(CurrentClimbRate);
+   */
   cnt+=1;
-  if (cnt ==ClimbRateQueueLength){
+  if (cnt==ClimbRateQueueLength){
     cnt=0;
-    calcClimbRate();
+
+    // Do not use the t2o top values for the calculation
+    sumAlti-=MaxDiff;
+    sumAlti-=MinDiff;
+    MaxDiff=0;
+    MinDiff=0;
+    //printer->print("RESULT==");      //printer->println(varioData.climbRate);
+    //printer->print("sumAlti==");     //printer->println(sumAlti);
+    //printer->print("Micros==");      //printer->println(  (float)micros()-Start);
+    float CurrentClimbRate=(float)(sumAlti)*((float)1000000/((float)micros()-Start));
+    //printer->print("CurrentClimbRate==");  /printer->println(CurrentClimbRate);
+    varioData.climbRate=CurrentClimbRate;
+    if (varioData.maxClimbRate<varioData.climbRate)varioData.maxClimbRate=varioData.climbRate;
+    if (varioData.minClimbRate>varioData.climbRate)varioData.minClimbRate=varioData.climbRate;
+#ifdef DEBUG
+    printer->print("RESULT==");    
+    printer->println(varioData.climbRate);
+#endif
+    Start=micros();
+    sumAlti=0;
   }
   lastAlti=alti;
-  //calcClimbRate();
-}
-/* calc the average climbRate */
-void OXS_MS5611::calcClimbRate(){
-  float myClimbRate=0;
-  for(int i=0;i<ClimbRateQueueLength;){
-    myClimbRate+=_climbRateQueue[i];
-    i++;
-  }
-  myClimbRate/=ClimbRateQueueLength;
 
-  // rounding
-  //myClimbRate=((int32_t) (myClimbRate/2)) *2;
-  varioData.climbRate=(int32_t) myClimbRate;
-  
-  if (varioData.maxClimbRate<varioData.climbRate)varioData.maxClimbRate=varioData.climbRate;
-  if (varioData.minClimbRate>varioData.climbRate)varioData.minClimbRate=varioData.climbRate;
 }
 void OXS_MS5611::resetValues(){
   varioData.altOffset=varioData.absoluteAlt;
+  varioData.maxRelAlt=0;
+  varioData.minRelAlt=0;
   varioData.maxAbsAlt=varioData.absoluteAlt;
   varioData.minAbsAlt=varioData.absoluteAlt;
   varioData.minClimbRate=varioData.climbRate;
   varioData.maxClimbRate=varioData.climbRate;
 }
+
+
+
 
