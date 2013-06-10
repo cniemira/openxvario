@@ -5,7 +5,8 @@
 #include <../../../../libraries/SoftwareSerial/SoftwareSerial.h>
 #include "Arduino.h"
 #include "OXS_MS5611.h" // we need the variodata struct
-#include "OXS_curr.h" // we need the variodata struct
+#include "OXS_curr.h" // we need the currentdata struct
+#include "OXS_arduino.h" // we need the arduinodata struct
 
 #define INTERVAL_FRAME1 100
 #define INTERVAL_FRAME2 1000
@@ -53,13 +54,15 @@ class OXS_OUT_FRSKY {
     OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print);
     VARIODATA* varioData ;
     CURRENTDATA* currentData ;
+    ARDUINODATA* arduinoData ;
     void setup();
     void sendData();    
 	
   private:
     uint8_t _pinTx;
     HardwareSerial* printer;
-    void SendFrame1();
+    void SendFrame1A();
+    void SendFrame1B();
     void SendFrame2();
     void SendValue(uint8_t ID, uint16_t Value);
     void SendCellVoltage(uint8_t cellID, uint16_t voltage);
