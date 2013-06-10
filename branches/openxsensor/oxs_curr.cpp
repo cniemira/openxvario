@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "oxs_curr.h"
 #include "HardwareSerial.h"
-long _currentValues[CURRENT_BUFFER_LENGTH +1];  // Averaging buffer for the measured current values
+//int32_t _currentValues[CURRENT_BUFFER_LENGTH +1];  // Averaging buffer for the measured current values
 //
 OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print) {
   // constructor
@@ -48,7 +48,7 @@ void OXS_CURRENT::prefillBuffer()
 
   for (int i=0;i<CURRENT_BUFFER_LENGTH;i++){
     delay(10);
-     readSensor();
+     readSensor(5000);
   }
   
   printer->println("done.");
@@ -72,10 +72,11 @@ void OXS_CURRENT::debugSendSetup()
   printer->println(currentData.milliAmps5V);
 }
 
-void OXS_CURRENT::readSensor()
+void OXS_CURRENT::readSensor(uint16_t vRef)
 {
   static unsigned long UpdateMs=0;
-  static int vcc=readVccMv();
+  //static int vcc=readVccMv();
+  int vcc=vRef;
   uint16_t value=uint16_t((float)analogRead(_pinCurrent)*(float)(vcc/1023.0));
     currentData.available=true;
     SaveCurrent(map(value,0,vcc,currentData.milliAmps0V,currentData.milliAmps5V)); // save the current measurements...
@@ -83,8 +84,6 @@ void OXS_CURRENT::readSensor()
   // calculate the consumed milliAmps every <n> ms
   if (millis()>(UpdateMs+100)){
     UpdateMs=millis();
-    vcc=readVccMv(); // ReadVcc does a delay(2), so invoking it every loop would be expensive..
-   
     uint16_t value=uint16_t((float)analogRead(_pinCurrent)*(float)(vcc/1023.0));
     currentData.available=true;
     SaveCurrent(map(value,0,vcc,currentData.milliAmps0V,currentData.milliAmps5V)); // save the current measurements...
@@ -105,9 +104,9 @@ void OXS_CURRENT::readSensor()
     }
 
     _microsLastCurrent=micros();
-    currentData.milliAmps=getAverageCurrent();
+   /* currentData.milliAmps=getAverageCurrent();
     if(currentData.minMilliAmps>currentData.milliAmps)currentData.minMilliAmps=currentData.milliAmps;
-    if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;
+    if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;*/
   }
 }
 
@@ -119,22 +118,17 @@ void OXS_CURRENT::readSensor()
 /****************************************************************/
 void OXS_CURRENT::SaveCurrent(long current){
   static int cnt =0;
-  _currentValues[cnt++]=current;
-  if(cnt>CURRENT_BUFFER_LENGTH){
+  static long sum =0;
+  sum+=current;
+  cnt++;
+  if(cnt==CURRENT_BUFFER_LENGTH){
+    currentData.milliAmps=sum/CURRENT_BUFFER_LENGTH;
+    sum=0;
     cnt=0;
-  }
-}
+    if(currentData.minMilliAmps>currentData.milliAmps)currentData.minMilliAmps=currentData.milliAmps;
+    if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;
 
-/****************************************************************/
-/* getAverageCurrent - calculate average Current based on all    */
-/* entries in the Current buffer                               */
-/****************************************************************/
-long OXS_CURRENT::getAverageCurrent()
-{
-  long result=0;
-  for (int i=0;i<CURRENT_BUFFER_LENGTH;i++) result +=_currentValues[i];
-  //return ((result/CurrentValuesCount)/10)*10;
-  return result/CURRENT_BUFFER_LENGTH;
+  }
 }
 
 void OXS_CURRENT::resetValues(){
@@ -143,54 +137,6 @@ void OXS_CURRENT::resetValues(){
   currentData.minMilliAmps=currentData.milliAmps;
 }
 
-/* readVcc - Read the real internal supply voltageof the arduino 
- 
- Improving Accuracy
- While the large tolerance of the internal 1.1 volt reference greatly limits the accuracy 
- of this measurement, for individual projects we can compensate for greater accuracy. 
- To do so, simply measure your Vcc with a voltmeter and with our readVcc() function. 
- Then, replace the constant 1125300L with a new constant:
- 
- scale_constant = internal1.1Ref * 1023 * 1000
- 
- where
- 
- internal1.1Ref = 1.1 * Vcc1 (per voltmeter) / Vcc2 (per readVcc() function)
- 
- This calibrated value will be good for the AVR chip measured only, and may be subject to
- temperature variation. Feel free to experiment with your own measurements. 
- */
-/* 
- Meine Versorgungsspannung per Multimeter =4,87V 
- 1,1*4870 /5115 =1,047311827957
- */
-//const long scaleConst = 1071.4 * 1000 ; // internalRef * 1023 * 1000;
-const long scaleConst = 1125.300 * 1000 ; // internalRef * 1023 * 1000;
-int OXS_CURRENT::readVccMv() {
-  // Read 1.1V reference against AVcc
-  // set the reference to Vcc and the measurement to the internal 1.1V reference
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-  ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-  ADMUX = _BV(MUX5) | _BV(MUX0);
-#elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-  ADMUX = _BV(MUX3) | _BV(MUX2);
-#else
-  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#endif  
-
-  delay(2); // Wait for Vref to settle
-  ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA,ADSC)); // measuring
-
-  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
-  uint8_t high = ADCH; // unlocks both
-
-  long result = (high<<8) | low;
-
-  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  return result; // Vcc in millivolts
-}
 
 
 
