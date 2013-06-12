@@ -8,7 +8,7 @@
 /* Remote controlling the sensitivity using a servo port on your receiver              */
 /* ==> choose 0 to 1 option! You need to have the PIN_PPM defined as well              */
 /***************************************************************************************/
-//#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
+#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
 // Choose this if you want to use a dedicated channel just for 
 // adjusting the sensitivity
 
@@ -27,7 +27,7 @@
 /* ==> choose freely one value per Telemetry field                                     */
 /***************************************************************************************/
 //**************** the DIST field (GPS Distance) (choose only one)**********************/
-//#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
+#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
 // be subtracted from the actual height for higher display precision.
 // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7)
 // if we subtract 300 display will be 156 78
@@ -37,7 +37,7 @@
 //#define SEND_PressureAsDIST    // pressure in DIST field
 //#define SEND_mAhAsDist
 //#define SEND_VRefAsDist // send the internal measured voltage as DIST
-#define SEND_DividerVoltageAsDist // send the calculated voltage on the voltage divider as DIST
+//#define SEND_DividerVoltageAsDist // send the calculated voltage on the voltage divider as DIST
 
 //**************** the FUEL field  (choose only one)**********************/
 //#define SEND_SensitivityAsFuel // sensitivity in DIST
@@ -61,12 +61,12 @@
 
 //************************** the T2 (temperature 2) Field? (choose only one) **********/
 //#define SEND_TEMP_T2    // MS5611 temperature as Temp2
-//#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
+#define SEND_SensitivityAsT2  // Kalman Param R in Temp2
 //#define SEND_PressureAsT2 9000 // pressure in 1/10th of mBar in T1 Field subtracted by
 // the number in the define statment. 
 // e.g. 950mbar => 9500 -offset of 9000 => 500 in display
 //#define SEND_MilliampsAsT2 // send the measured current as T2
-#define SEND_LoopTimeAsT2 // for debuging /developing purposes only
+//#define SEND_LoopTimeAsT2 // for debuging /developing purposes only
 //************************** the RPM Field? (choose only one) *************************/
 //(unprecise field! resolution is in steps of 30RPM!)
 //#define SEND_AltAsRPM      // Altitude in RPM ;-)
@@ -80,7 +80,7 @@
 /***************************************************************************************/
 #define PIN_SerialTX        4  // 4  the pin to transmit the serial data to the frsky telemetry enabled receiver
 
-//#define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
+#define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
                                // you can uncomment this line if you want to completly disable the remote control functionality
                                
 #define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
@@ -100,7 +100,7 @@
 /* The Kalman Filter is being used to remove noise from the MS5611 sensor data. It can */
 /* be adjusted by changing the value Q (process Noise)                                 */
 /***************************************************************************************/
-#define KALMAN_R 350  
+#define KALMAN_R 300  
 //#define KALMAN_R 250  // default:300   change this value if you want to adjust the default sensitivity!
                       // this will only be used if PIN_PPM is NOT defined
                       //  50 = fast but lot of errors (good for sensor testing...but quite a lot of noise)
@@ -157,7 +157,7 @@
 /* By doing this we will get ongoing data counts even if the you turn off the modell   */
 /* between flights                                                                     */
 /***************************************************************************************/
-#define SAVE_TO_EEPROM      // Uncomment this to disable the persistent storage 
+//#define SAVE_TO_EEPROM      // Uncomment this to disable the persistent storage 
 //#define SEND_MIN_MAX_ALT
 //#define SEND_MAX_CURRENT
 

@@ -11,8 +11,7 @@
 #include "EEPROMAnything.h"
 #endif
 
-//#define DEBUG
-//#define LoopTimeAsT1
+#define DEBUG
 
 #define VARIO
 
@@ -93,21 +92,19 @@ void loop(){
 
   if (millis()>LastOutputMs+100){ // invoke output routines every 50ms if there's something new to do.
 #ifdef DEBUG
-    Serial.print("loopMs=");      
+    /*Serial.print("loopMs=");      
     Serial.print(  float((millis()-LastOutputMs)) / loopcnt);    
     Serial.print(" ;");
     Serial.print("freeRam=");      
-    Serial.println(freeRam());
+    Serial.println(freeRam());*/
 #endif
-#ifdef LoopTimeAsT1
-    oxs_MS5611.varioData.temperature=10*(float((millis()-LastOutputMs)) / loopcnt);
-#endif
+
     loopcnt=0; 
     LastOutputMs=millis();  
 
     // OutputModule go here
 #ifdef DEBUG
-    OutputToSerial();
+    //OutputToSerial();
 #endif
 #ifdef VARIO
     oxs_OutFrsky.varioData=&oxs_MS5611.varioData;
@@ -236,7 +233,7 @@ void Reset10SecButtonPress()
 #ifdef DEBUG
 void OutputToSerial(){
 #define DEBUGMINMAX
-
+#ifdef FALSE
   Serial.print("vRef=");    
   Serial.print( (float)oxs_Arduino.arduinoData.vrefMilliVolts /1000);
 #ifdef DEBUGMINMAX
@@ -245,6 +242,7 @@ void OutputToSerial(){
   Serial.print("..");  
   Serial.print( ( (float)oxs_Arduino.arduinoData.maxVrefMilliVolts)/1000);
   Serial.print(")");
+#endif
 #endif
 
   Serial.print(" ;divV=");    
@@ -288,8 +286,10 @@ void OutputToSerial(){
   Serial.print( ( (float)oxs_MS5611.varioData.maxClimbRate)/100);
   Serial.print(")");
 #endif
+#ifdef FALSE
   Serial.print(" ;Temp=");    
   Serial.print((float)oxs_MS5611.varioData.temperature/10);
+#endif
 #endif
 #ifdef PIN_CurrentSensor
   Serial.print(" ;mA=");    

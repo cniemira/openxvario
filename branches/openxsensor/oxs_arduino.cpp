@@ -25,7 +25,7 @@ void OXS_ARDUINO::setupDivider( int16_t DividerAnalogPin, uint32_t ohmToGnd,uint
     printer->println( OhmToBat);
     printer->print("Divider _resistorFactor=");
     printer->println( _resistorFactor);
-    printer->print("Divider _Multilicator=");
+    printer->print("Divider _Multiplicator=");
     printer->println(1/ _resistorFactor);
     printer->print("Maximum allowed Voltage allowed on Voltage Divider=");
     printer->println(5/ _resistorFactor);
@@ -135,14 +135,21 @@ void OXS_ARDUINO::SaveDividerVoltage(uint16_t value)
   static byte cnt =0;
   static uint32_t sum=0;
   sum+=value;
+   
   cnt++;
   if(cnt==DIVIDER_BUFFER_LENGTH){
-    arduinoData.dividerMilliVolts=sum/DIVIDER_BUFFER_LENGTH ;//((float)val *((float)arduinoData.vrefMilliVolts/(float)1024)/(float)_resistorFactor); 
+     arduinoData.dividerMilliVolts=sum/DIVIDER_BUFFER_LENGTH ;//((float)val *((float)arduinoData.vrefMilliVolts/(float)1024)/(float)_resistorFactor); 
+     //printer->print("Divider value=");
+    //printer->println( arduinoData.dividerMilliVolts);
+ 
 #ifdef VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV
-    arduinoData.dividerMilliVolts+=VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV;
+    if ((int32_t)arduinoData.dividerMilliVolts >(int32_t)VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV)arduinoData.dividerMilliVolts+=VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV;
+    else arduinoData.dividerMilliVolts=0;
 #endif
     if(arduinoData.minDividerMilliVolts>arduinoData.dividerMilliVolts)arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts;
     if(arduinoData.maxDividerMilliVolts<arduinoData.dividerMilliVolts)arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts; 
+   //   printer->print("Divider value=");
+   // printer->println( arduinoData.dividerMilliVolts);
     cnt=0;
     sum=0;
     cnt=0;

@@ -31,7 +31,7 @@ class OXS_MS5611 {
 public:
   OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r);
   VARIODATA varioData ;
-  float rawPressure; // in 1/100 mBar
+  int64_t rawPressure; // in 1/100 mBar
   void setup();
   void  readSensor();
 
@@ -43,16 +43,17 @@ private:
   void SendCommand(byte command);
   long getData(byte command, byte del);
   HardwareSerial* printer;
-  void kalman_update(float measurement);
+ 
+ //void kalman_update(float measurement);
+ void kalman_update(int64_t measurement);
 
   //float _climbRateQueue[ClimbRateQueueLength+1 ];
   void SaveClimbRate(float alti);
   //void SaveClimbRateOld(float alti);
-  void calcAltitude();
+  float calcAltitude(float pressure);
   //void calcClimbRate();
   int16_t _calcTemperature;     // in 1/10 Celsius only used for alt calculation. 
-
-};
+ };
 
 #endif // OXS_MS5611
 
