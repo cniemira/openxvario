@@ -71,8 +71,13 @@ void OXS_OUT_FRSKY::SendFrame1A(){
       printer->print("Sending vario data ");
 #endif
       SendAlt(varioData->absoluteAlt);    
-      SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
-
+      
+      // Attempt to work around the annoying 10cm double beep
+     //SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
+      if (varioData->climbRate==10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)9); // ClimbRate in open9x Vario mode
+       else if (varioData->climbRate==-10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)-9);
+       else SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
+ 
         // ********************************* The Temp 1 FIeld
 #ifdef SEND_TEMP_T1      
       SendTemperature1(varioData->temperature/10); 
@@ -129,7 +134,6 @@ void OXS_OUT_FRSKY::SendFrame1A(){
       SendTemperature2(arduinoData->loopTimeMilliSeconds); 
 #endif
 
-SEND_LoopTimeAsT2
 
 
   }
