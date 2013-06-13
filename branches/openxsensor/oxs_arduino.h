@@ -31,7 +31,10 @@ class OXS_ARDUINO {
      float _resistorFactor;
      void SaveVRef(uint16_t value);
      void SaveDividerVoltage(uint16_t value);
+     void prefillBuffer();
 
 };
 
 #endif // OXS_ARDUINO_h
+
+

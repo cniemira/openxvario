@@ -6,22 +6,19 @@
 #include "HardwareSerial.h"
 #include "oxs_config.h"
 
-
 OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print) : 
-_mySerial(SoftwareSerial(0,pinTx,true))  // the true is inverting the signal of the RS232 interface
-{
-  // constructor
-  _pinTx=pinTx;
-  printer = &print; //operate on the address of print
-}
 // Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
 // Pin PIN_SerialTX has to be connected to rx pin of the receiver
 // we do not need the RX so we set it to 0
+_mySerial(SoftwareSerial(0,pinTx,true))  // the true is inverting the signal of the RS232 interface
+{
+  _pinTx=pinTx;
+  printer = &print; //operate on the address of print
+}
 
 // **************** Setup the FRSky OutputLib *********************
 void OXS_OUT_FRSKY::setup()
 {
-
   _mySerial=SoftwareSerial(0, _pinTx,true); // RX, TX
   _mySerial.begin(9600);
 #ifdef DEBUG
@@ -71,13 +68,13 @@ void OXS_OUT_FRSKY::SendFrame1A(){
       printer->print("Sending vario data ");
 #endif
       SendAlt(varioData->absoluteAlt);    
-      
+
       // Attempt to work around the annoying 10cm double beep
-     //SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
+      //SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
       if (varioData->climbRate==10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)9); // ClimbRate in open9x Vario mode
-       else if (varioData->climbRate==-10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)-9);
-       else SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
- 
+      else if (varioData->climbRate==-10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)-9);
+      else SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
+
         // ********************************* The Temp 1 FIeld
 #ifdef SEND_TEMP_T1      
       SendTemperature1(varioData->temperature/10); 
@@ -131,7 +128,7 @@ void OXS_OUT_FRSKY::SendFrame1A(){
     SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)arduinoData->vrefMilliVolts/100); 
 #endif
 #ifdef SEND_LoopTimeAsT2      
-      SendTemperature2(arduinoData->loopTimeMilliSeconds); 
+    SendTemperature2(arduinoData->loopTimeMilliSeconds); 
 #endif
 
 
@@ -218,16 +215,16 @@ void OXS_OUT_FRSKY::SendFrame1B(){
     } // if (currentData->available)
   } // if(currentData==NULL)
 #ifdef SEND_VRefAsFuel
-      SendFuel( uint16_t(arduinoData->vrefMilliVolts) );
+  SendFuel( uint16_t(arduinoData->vrefMilliVolts) );
 #endif
 #ifdef SEND_DividerMilliVoltsAsFuel
-      SendFuel( uint16_t(arduinoData->dividerMilliVolts) );
+  SendFuel( uint16_t(arduinoData->dividerMilliVolts) );
 #endif
 #ifdef SEND_VRefAsDist
-      SendGPSDist( uint16_t(arduinoData->vrefMilliVolts) );
+  SendGPSDist( uint16_t(arduinoData->vrefMilliVolts) );
 #endif
 #ifdef SEND_DividerVoltageAsDist
-      SendGPSDist( uint16_t(arduinoData->dividerMilliVolts) );
+  SendGPSDist( uint16_t(arduinoData->dividerMilliVolts) );
 #endif
   _mySerial.write(0x5E); // End of Frame 1!
 }
@@ -377,8 +374,6 @@ void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps)
 #endif 
   SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
 }
-
-
 
 
 

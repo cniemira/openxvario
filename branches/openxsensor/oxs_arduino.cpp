@@ -5,20 +5,17 @@
 
 OXS_ARDUINO::OXS_ARDUINO(HardwareSerial &print) 
 {
-  // constructor
   printer = &print; //operate on the address of print   
-  //printer->begin(115200);
-  //printer->print("Arduino internal sendors:");
 }
 
 // **************** Setup the Current sensor *********************
 void OXS_ARDUINO::setupDivider( int16_t DividerAnalogPin, uint32_t ohmToGnd,uint32_t OhmToBat )
 {
-
   if (DividerAnalogPin >=0)
   {
     _pinDivider=DividerAnalogPin;
     _resistorFactor = (float)ohmToGnd/((float)OhmToBat + (float)ohmToGnd);
+#ifdef DEBUG
     printer->print("Divider ohmToGnd=");
     printer->println( ohmToGnd);
     printer->print("Divider OhmToBat=");
@@ -29,12 +26,27 @@ void OXS_ARDUINO::setupDivider( int16_t DividerAnalogPin, uint32_t ohmToGnd,uint
     printer->println(1/ _resistorFactor);
     printer->print("Maximum allowed Voltage allowed on Voltage Divider=");
     printer->println(5/ _resistorFactor);
+#endif
   }
+  prefillBuffer();
   readSensor();
   resetValues();
 }
+void OXS_ARDUINO::prefillBuffer()
+{
+  // Prefill buffers.
+#ifdef DEBUG
+  printer->print("Prefilling arduino buffers...");
+#endif
+  for (int i=0;i<VREF_BUFFER_LENGTH*2;i++){
+     readSensor();
+  }
+#ifdef DEBUG
+  printer->println("done.");
+#endif
+  resetValues();
 
-
+}
 // R2= Resistor from analog pin to GND
 // R1= Resistor from analog pin to to voltage to be measured
 // Val= Measured Voltage on Analog Pin
@@ -62,7 +74,6 @@ void OXS_ARDUINO::resetValues()
   arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts; // in mV
   arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts;  // in mV
 }    
-
 
 /* readVcc - Read the real internal supply voltageof the arduino 
  Improving Accuracy
@@ -135,26 +146,25 @@ void OXS_ARDUINO::SaveDividerVoltage(uint16_t value)
   static byte cnt =0;
   static uint32_t sum=0;
   sum+=value;
-   
+
   cnt++;
   if(cnt==DIVIDER_BUFFER_LENGTH){
-     arduinoData.dividerMilliVolts=sum/DIVIDER_BUFFER_LENGTH ;//((float)val *((float)arduinoData.vrefMilliVolts/(float)1024)/(float)_resistorFactor); 
-     //printer->print("Divider value=");
-    //printer->println( arduinoData.dividerMilliVolts);
- 
+    arduinoData.dividerMilliVolts=sum/DIVIDER_BUFFER_LENGTH ;
+
 #ifdef VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV
     if ((int32_t)arduinoData.dividerMilliVolts >(int32_t)VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV)arduinoData.dividerMilliVolts+=VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV;
     else arduinoData.dividerMilliVolts=0;
 #endif
     if(arduinoData.minDividerMilliVolts>arduinoData.dividerMilliVolts)arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts;
     if(arduinoData.maxDividerMilliVolts<arduinoData.dividerMilliVolts)arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts; 
-   //   printer->print("Divider value=");
-   // printer->println( arduinoData.dividerMilliVolts);
     cnt=0;
     sum=0;
     cnt=0;
   }
 }
+
+
+
 
 
 
