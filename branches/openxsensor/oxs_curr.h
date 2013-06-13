@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-#define CURRENT_BUFFER_LENGTH 150  // Choose 75 for standard ACS712 modules. Choose 30 if you added a filter capacitor of 47nF
+#define CURRENT_BUFFER_LENGTH 150  
 struct CURRENTDATA {
   bool available;          // true if data is available
   int32_t milliAmps;       // in mA
@@ -39,4 +39,6 @@ private:
 };
 
 #endif // OXS_CURRENT_h
+
+
 

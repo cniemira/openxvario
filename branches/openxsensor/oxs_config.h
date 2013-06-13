@@ -1,22 +1,13 @@
 #ifndef OXS_CONFIG_h
 #define OXS_CONFIG_h
 // openxvario http://code.google.com/p/openxvario/
-// started by R.Schloßhan 
-
-
-/***************************************************************************************/
-/* Remote controlling the sensitivity using a servo port on your receiver              */
-/* ==> choose 0 to 1 option! You need to have the PIN_PPM defined as well              */
-/***************************************************************************************/
-#define PPM_AllwaysUsed  // PPM Signal always be used to control the sensitivity
-// Choose this if you want to use a dedicated channel just for 
-// adjusting the sensitivity
+// started by R.SchloÃƒÅ¸han 
 
 /***************************************************************************************/
 /* Other Configuration Options  => various different values to take influence on       */
 /*                    various stuff. Normaly you do not have to change any of these    */
 /***************************************************************************************/
-#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
+//#define FORCE_ABSOLUTE_ALT // If defined, the height offset in open9x will be resetted upon startup, which results 
 // in an absolute height display in open9x . (You can still change to a relative display 
 // by pressing [MENU] in the telem.screens
 // If not defined, open9x will use the first transmitted altitude as an internal offset, 
@@ -27,7 +18,7 @@
 /* ==> choose freely one value per Telemetry field                                     */
 /***************************************************************************************/
 //**************** the DIST field (GPS Distance) (choose only one)**********************/
-#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
+//#define SEND_AltAsDIST 0   // 0 Altitude in DIST the numeric value (in cm) is an offset that will
 // be subtracted from the actual height for higher display precision.
 // e.g: Actual height is 456,78 Meters ( DIsplay in DIst would be 456 7)
 // if we subtract 300 display will be 156 78
@@ -37,7 +28,7 @@
 //#define SEND_PressureAsDIST    // pressure in DIST field
 //#define SEND_mAhAsDist
 //#define SEND_VRefAsDist // send the internal measured voltage as DIST
-//#define SEND_DividerVoltageAsDist // send the calculated voltage on the voltage divider as DIST
+#define SEND_DividerVoltageAsDist // send the calculated voltage on the voltage divider as DIST
 
 //**************** the FUEL field  (choose only one)**********************/
 //#define SEND_SensitivityAsFuel // sensitivity in DIST
@@ -162,4 +153,6 @@
 //#define SEND_MAX_CURRENT
 
 #endif
+
+
 
