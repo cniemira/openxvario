@@ -25,7 +25,7 @@ struct VARIODATA {
   int32_t altOffset;       // in cm    
   uint16_t paramKalman_r;  // 50..1000  sensor noise
   double paramKalman_q;    // 0.05      process noise covariance
-
+  float paramKalman_k;
 };
 class OXS_MS5611 {
 public:
@@ -56,4 +56,6 @@ private:
  };
 
 #endif // OXS_MS5611
+
+
 

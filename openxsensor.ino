@@ -11,25 +11,24 @@
 #include "EEPROMAnything.h"
 #endif
 
-#define DEBUG
 
+#define DEBUG
 #define VARIO
 
-
-
-
 // Create instances of the used classes
-
+/*#ifdef VARIO*/
 #ifdef VARIO
 OXS_MS5611 oxs_MS5611(I2CAdd,Serial,KALMAN_R);
 #endif
-
 
 #ifdef PIN_CurrentSensor
 OXS_CURRENT oxs_Current(PIN_CurrentSensor,Serial);
 #endif
 OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX,Serial);
 OXS_ARDUINO oxs_Arduino(Serial);
+
+
+
 //************************************************************************************************** Setup()
 void setup(){
 #ifdef DEBUG
@@ -39,11 +38,9 @@ void setup(){
   Serial.println(freeRam());
 #endif 
 
-
 #ifdef PIN_PushButton  
   pinMode(PIN_PushButton, INPUT_PULLUP);
 #endif
-
   pinMode(PIN_LED, OUTPUT); // The signal LED
 
   // Invoke all setup methods 
@@ -52,28 +49,27 @@ void setup(){
 #else
   oxs_Arduino.setupDivider(-1, 33000,56000);
 #endif
+
 #ifdef VARIO
   oxs_MS5611.setup();
 #endif
+
+
 #ifdef PIN_CurrentSensor
   oxs_Current.setupIdleMvA( IdleMillivolts,MillivoltsPerAmpere);
-  //  oxs_Current.setupMinMaxA(-13469,13559);
 #endif
-
   oxs_OutFrsky.setup();
+
 #ifdef SAVE_TO_EEPROM
   LoadFromEEProm();
 #endif
-
 }
-
 
 //************************************************************************************************** Loop()
 void loop(){
   static int loopcnt=0;
   static unsigned long LastOutputMs=millis();
   loopcnt+=1;
-  //delay(3);
   // Read all the sensors / Inputs
   oxs_Arduino.readSensor();
 #ifdef VARIO
@@ -83,50 +79,36 @@ void loop(){
   oxs_Current.readSensor(oxs_Arduino.arduinoData.vrefMilliVolts);
 #endif
 
-
 #ifdef PIN_PushButton
   // Check if a button has been pressed
   checkButton();
 #endif
 
-
   if (millis()>LastOutputMs+100){ // invoke output routines every 50ms if there's something new to do.
-#ifdef DEBUG
-    /*Serial.print("loopMs=");      
-    Serial.print(  float((millis()-LastOutputMs)) / loopcnt);    
-    Serial.print(" ;");
-    Serial.print("freeRam=");      
-    Serial.println(freeRam());*/
-#endif
-
     loopcnt=0; 
     LastOutputMs=millis();  
-
     // OutputModule go here
 #ifdef DEBUG
-    //OutputToSerial();
+    OutputToSerial();
 #endif
+
 #ifdef VARIO
     oxs_OutFrsky.varioData=&oxs_MS5611.varioData;
 #endif
+
 #ifdef PIN_CurrentSensor
     oxs_OutFrsky.currentData=&oxs_Current.currentData;
 #endif
+
     oxs_OutFrsky.arduinoData=&oxs_Arduino.arduinoData;
     oxs_OutFrsky.sendData();
-
 
     // PPM Processing
     // Read the ppm Signal from receiver
 #ifdef PIN_PPM 
-#ifdef PPM_ProgrammingMode 
-    if (ppmProgMode)
-#endif
-#ifdef PPM_AllwaysUsed 
-      if (true)
-#endif
-        ProcessPPMSignal();
-#endif
+    if (true)
+      ProcessPPMSignal();
+#endif //PIN_PPM 
 
   }//if (millis()>LastOutputMs+100)
 #ifdef SAVE_TO_EEPROM
@@ -228,85 +210,10 @@ void Reset10SecButtonPress()
 #endif
 }
 
-#endif 
-
-#ifdef DEBUG
-void OutputToSerial(){
-#define DEBUGMINMAX
-#ifdef FALSE
-  Serial.print("vRef=");    
-  Serial.print( (float)oxs_Arduino.arduinoData.vrefMilliVolts /1000);
-#ifdef DEBUGMINMAX
-  Serial.print("(");  
-  Serial.print( ( (float)oxs_Arduino.arduinoData.minVrefMilliVolts)/1000);
-  Serial.print("..");  
-  Serial.print( ( (float)oxs_Arduino.arduinoData.maxVrefMilliVolts)/1000);
-  Serial.print(")");
-#endif
 #endif
 
-  Serial.print(" ;divV=");    
-  Serial.print((float)oxs_Arduino.arduinoData.dividerMilliVolts /1000);
-#ifdef DEBUGMINMAX
-  Serial.print("(");  
-  Serial.print( ( (float)oxs_Arduino.arduinoData.minDividerMilliVolts)/1000);
-  Serial.print("..");  
-  Serial.print( ( (float)oxs_Arduino.arduinoData.maxDividerMilliVolts)/1000);
-  Serial.print(")");
-#endif
 
-#ifdef VARIO
-  Serial.print(" ;mBar=");    
-  Serial.print( ( ((float)(int32_t)(oxs_MS5611.varioData.pressure))) /100);
-  Serial.print(";relAlt=");  
-  Serial.print( ( (float)oxs_MS5611.varioData.relativeAlt)/100);
-#ifdef DEBUGMINMAX
-  Serial.print("(");  
-  Serial.print( ( (float)oxs_MS5611.varioData.minRelAlt)/100);
-  Serial.print("..");  
-  Serial.print( ( (float)oxs_MS5611.varioData.maxRelAlt)/100);
-  Serial.print(")");
-#endif
-  Serial.print(" ;absAlt=");  
-  Serial.print( ( (float)oxs_MS5611.varioData.absoluteAlt)/100);
-#ifdef DEBUGMINMAX
-  Serial.print("(");  
-  Serial.print( ( (float)oxs_MS5611.varioData.minAbsAlt)/100);
-  Serial.print("..");  
-  Serial.print( ( (float)oxs_MS5611.varioData.maxAbsAlt)/100);
-  Serial.print(")");
-#endif 
 
-  Serial.print(" ;Vspd=");    
-  Serial.print( ( (float)oxs_MS5611.varioData.climbRate)/100);
-#ifdef DEBUGMINMAX
-  Serial.print("(");    
-  Serial.print( ( (float)oxs_MS5611.varioData.minClimbRate)/100);
-  Serial.print("..");    
-  Serial.print( ( (float)oxs_MS5611.varioData.maxClimbRate)/100);
-  Serial.print(")");
-#endif
-#ifdef FALSE
-  Serial.print(" ;Temp=");    
-  Serial.print((float)oxs_MS5611.varioData.temperature/10);
-#endif
-#endif
-#ifdef PIN_CurrentSensor
-  Serial.print(" ;mA=");    
-  Serial.print( ( ((float)(int32_t)(oxs_Current.currentData.milliAmps))) );
-  Serial.print("(");    
-#ifdef DEBUGMINMAX
-  Serial.print(  ( ((float)(int32_t)(oxs_Current.currentData.minMilliAmps))) );
-  Serial.print("..");    
-  Serial.print( ( ((float)(int32_t)(oxs_Current.currentData.maxMilliAmps))) );
-  Serial.print(")");
-#endif
-  Serial.print(" ;mAh=");  
-  Serial.print( oxs_Current.currentData.consumedMilliAmps);
-#endif
-  Serial.println();
-}
-#endif
 #ifdef SAVE_TO_EEPROM
 /****************************************/
 /* SaveToEEProm => save persistant Data */
@@ -314,8 +221,10 @@ void OutputToSerial(){
 void SaveToEEProm(){
   static byte state=0;
   static int adr=0;
+#ifdef DEBUG
   Serial.print("++++++++++++ SAving to EEProm:");    
   Serial.println(state);    
+#endif
   switch (state){
   case 0:
 #ifdef PIN_CurrentSensor
@@ -331,29 +240,18 @@ void SaveToEEProm(){
 #endif
 #ifdef VARIO
   case 3:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.maxRelAlt);
-
   case 4:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.minRelAlt);
-
   case 5:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.maxAbsAlt);
-
   case 6:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.minAbsAlt);
-
   case 7:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.maxClimbRate);
-
   case 8:
-
     adr+=EEPROM_writeAnything(adr, oxs_MS5611.varioData.minClimbRate);
-#endif
+#endif //VARIO
   }
 
   state++;
@@ -409,80 +307,39 @@ void LoadFromEEProm(){
   adr+=EEPROM_readAnything(adr, oxs_MS5611.varioData.minClimbRate);
   Serial.print(" maxClimbRate=");    
   Serial.print( oxs_MS5611.varioData.maxClimbRate);
-#endif
+#endif //VARIO
 }
-
-/*
-struct VARIODATA {
- bool available;          // true if data is available
- float pressure;          // in 1/100 mBar
- int16_t temperature;     // in 1/10 Celsius
- 
- int32_t absoluteAlt;     // in cm
- int32_t relativeAlt;	   // in cm
- int32_t maxAbsAlt;       // in cm
- int32_t minAbsAlt;       // in cm
- int32_t climbRate;       // in cm
- int32_t minClimbRate;    // in cm
- int32_t maxClimbRate;    // in cm
- 
- int32_t altOffset;       // in cm    
- uint16_t paramKalman_r;  // 50..1000  sensor noise
- double paramKalman_q;    // 0.05      process noise covariance
- };
- 
- 
- int32_t milliAmps;          // in mA
- float consumedMilliAmps;  // in mA
- 
- // config values should be set via method calls
- int32_t maxMilliAmps;       // in mA
- int32_t minMilliAmps;       // in mA
- uint16_t idleMilliVolts;       // in mV
- int16_t milliVoltPerAmpere;// in mV
- int32_t milliAmps0V;       // in mA theoretical value for calculation. do not need to match allowed sensor range
- int32_t milliAmps5V;       // in mA theoretical value for calculation. do not need to match allowed sensor range
- 
- */
 #endif //saveToEeprom
+
+
 /**********************************************************/
 /* ProcessPPMSignal => read PPM signal from receiver and  */
 /*   use its value to adjust sensitivity                  */
 /**********************************************************/
 #ifdef PIN_PPM
-
 void ProcessPPMSignal(){
   static boolean SignalPresent= false;
   unsigned long ppm= ReadPPM();
+  Serial.print("ppm=");
   Serial.println(ppm);
-#ifdef PPM_ProgrammingMode 
-  static unsigned int ppm_min=980;
-  static unsigned int ppm_max=2000;
-#else
   static unsigned int ppm_min=PPM_Range_min;
   static unsigned int ppm_max=PPM_Range_max;
-#endif
-
   if (ppm>0){
     SignalPresent=true;// Signal is currently present!
-#ifdef PPM_ProgrammingMode 
-    if (ppm<ppm_min)ppm_min=ppm;
-    if (ppm>ppm_max)ppm_max=ppm;
-#endif     
-    //kalman_r=map(ppm, 981,1999,KALMAN_R_MIN,KALMAN_R_MAX);
 #ifdef VARIO
     oxs_MS5611.varioData.paramKalman_r=map(ppm, ppm_min,ppm_max,KALMAN_R_MIN/10,KALMAN_R_MAX/10)*10; // map value and change stepping to 10
 #endif
   }
 }
-#endif
+
+
 /**********************************************************/
 /* ReadPPM => read PPM signal from receiver               */
 /*   pre-evaluate its value for validity                  */
 /**********************************************************/
 
 // ReadPPM - Read ppm signal and detect if there is no signal
-#ifdef PIN_PPM
+
 unsigned long ReadPPM(){
   unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
 #ifdef DEBUG
@@ -491,8 +348,95 @@ unsigned long ReadPPM(){
   if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
   return ppm;
 }
-#endif
+#endif //PIN_PPM
 
+
+
+
+void OutputToSerial(){
+#define DEBUGMINMAX
+#define DEBUGVREF
+#define DEBUGDIVIDER
+#define DEBUGTEMP
+  Serial.print(" K=");    
+  Serial.print( oxs_MS5611.varioData.paramKalman_k,DEC);
+
+#ifdef DEBUGVREF
+  Serial.print("vRef=");    
+  Serial.print( (float)oxs_Arduino.arduinoData.vrefMilliVolts /1000);
+#ifdef DEBUGMINMAX
+  Serial.print("(");  
+  Serial.print( ( (float)oxs_Arduino.arduinoData.minVrefMilliVolts)/1000);
+  Serial.print("..");  
+  Serial.print( ( (float)oxs_Arduino.arduinoData.maxVrefMilliVolts)/1000);
+  Serial.print(")");
+#endif //DEBUGMINMAX
+#endif //DEBUGVREF
+
+#ifdef DEBUGDIVIDER
+  Serial.print(" ;divV=");    
+  Serial.print((float)oxs_Arduino.arduinoData.dividerMilliVolts /1000);
+#ifdef DEBUGMINMAX
+  Serial.print("(");  
+  Serial.print( ( (float)oxs_Arduino.arduinoData.minDividerMilliVolts)/1000);
+  Serial.print("..");  
+  Serial.print( ( (float)oxs_Arduino.arduinoData.maxDividerMilliVolts)/1000);
+  Serial.print(")");
+#endif //DEBUGMINMAX
+#endif //DEBUGDIVIDER
+
+#ifdef VARIO
+  Serial.print(" ;mBar=");    
+  Serial.print( ( ((float)(int32_t)(oxs_MS5611.varioData.pressure))) /100);
+  Serial.print(";relAlt=");  
+  Serial.print( ( (float)oxs_MS5611.varioData.relativeAlt)/100);
+#ifdef DEBUGMINMAX
+  Serial.print("(");  
+  Serial.print( ( (float)oxs_MS5611.varioData.minRelAlt)/100);
+  Serial.print("..");  
+  Serial.print( ( (float)oxs_MS5611.varioData.maxRelAlt)/100);
+  Serial.print(")");
+#endif //DEBUGMINMAX
+  Serial.print(" ;absAlt=");  
+  Serial.print( ( (float)oxs_MS5611.varioData.absoluteAlt)/100);
+#ifdef DEBUGMINMAX
+  Serial.print("(");  
+  Serial.print( ( (float)oxs_MS5611.varioData.minAbsAlt)/100);
+  Serial.print("..");  
+  Serial.print( ( (float)oxs_MS5611.varioData.maxAbsAlt)/100);
+  Serial.print(")");
+#endif  //DEBUGMINMAX
+
+  Serial.print(" ;Vspd=");    
+  Serial.print( ( (float)oxs_MS5611.varioData.climbRate)/100);
+#ifdef DEBUGMINMAX
+  Serial.print("(");    
+  Serial.print( ( (float)oxs_MS5611.varioData.minClimbRate)/100);
+  Serial.print("..");    
+  Serial.print( ( (float)oxs_MS5611.varioData.maxClimbRate)/100);
+  Serial.print(")");
+#endif //DEBUGMINMAX
+#ifdef DEBUGTEMP
+  Serial.print(" ;Temp=");    
+  Serial.print((float)oxs_MS5611.varioData.temperature/10);
+#endif //DEBUGTEMP
+#endif // VARIO
+
+#ifdef PIN_CurrentSensor
+  Serial.print(" ;mA=");    
+  Serial.print( ( ((float)(int32_t)(oxs_Current.currentData.milliAmps))) );
+  Serial.print("(");    
+#ifdef DEBUGMINMAX
+  Serial.print(  ( ((float)(int32_t)(oxs_Current.currentData.minMilliAmps))) );
+  Serial.print("..");    
+  Serial.print( ( ((float)(int32_t)(oxs_Current.currentData.maxMilliAmps))) );
+  Serial.print(")");
+#endif //DEBUGMINMAX
+  Serial.print(" ;mAh=");  
+  Serial.print( oxs_Current.currentData.consumedMilliAmps);
+#endif // PIN_CurrentSensor
+  Serial.println();
+}
 
 /***********************************************/
 /* freeRam => Cook coffee and vaccuum the flat */
@@ -502,10 +446,6 @@ int freeRam () {
   int v; 
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
-
-
-
-
 
 
 
