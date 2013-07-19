@@ -11,7 +11,7 @@ I of course do not take any warranty whatsoever for the instructions below. Do i
 
 == Stuff you will need ==
   * an open 9x based transmitter with audio and frsky telemetry modifications
-  * an Arduino Pro Mini 5V 16Mhz 
+  * an Arduino Pro Mini 5V 16Mhz you need the ATmega328 version. The ATmega168 will NOT work!
   * a FTDI cable ( e.g. FTDI Basic) that provides the DTR Signal to autoreset the arduino when programming)
   * a 5V MS5611 Sensor Module for around 15€-20€ on eBay 
   * a suitable Fr-Sky telemetry enabled receiver with a RS232 port or alternativly one free analog input signal (A1 or A2) to transfer the lift/sink rate. 
