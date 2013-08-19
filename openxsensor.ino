@@ -12,11 +12,10 @@
 #endif
 
 
-#define DEBUG
+// #define DEBUG
 #define VARIO
 
 // Create instances of the used classes
-/*#ifdef VARIO*/
 #ifdef VARIO
 OXS_MS5611 oxs_MS5611(I2CAdd,Serial,KALMAN_R);
 #endif
@@ -65,26 +64,41 @@ void setup(){
 #endif
 }
 
-//************************************************************************************************** Loop()
-void loop(){
-  static int loopcnt=0;
-  static unsigned long LastOutputMs=millis();
-  loopcnt+=1;
+void readSensors()
+{
   // Read all the sensors / Inputs
+#ifdef PIN_CurrentSensor
   oxs_Arduino.readSensor();
+#endif
 #ifdef VARIO
   oxs_MS5611.readSensor();
 #endif
 #ifdef PIN_CurrentSensor
   oxs_Current.readSensor(oxs_Arduino.arduinoData.vrefMilliVolts);
 #endif
+}
 
+#if defined(FRSKY_SPORT)
+  #define TIME_TO_SEND() (1)
+#else
+  #define TIME_TO_SEND() (millis()>LastOutputMs+100)
+#endif
+//************************************************************************************************** Loop()
+void loop(){
+  static int loopcnt=0;
+  static unsigned long LastOutputMs=millis();
+  loopcnt+=1;
+  
+#if !defined(FRSKY_SPORT)
+  readSensors();
+#endif
+  
 #ifdef PIN_PushButton
   // Check if a button has been pressed
   checkButton();
 #endif
 
-  if (millis()>LastOutputMs+100){ // invoke output routines every 50ms if there's something new to do.
+  if (TIME_TO_SEND()) { // invoke output routines every 50ms if there's something new to do.
     loopcnt=0; 
     LastOutputMs=millis();  
     // OutputModule go here
@@ -101,7 +115,15 @@ void loop(){
 #endif
 
     oxs_OutFrsky.arduinoData=&oxs_Arduino.arduinoData;
-    oxs_OutFrsky.sendData();
+
+#if defined(FRSKY_SPORT)
+    if (oxs_OutFrsky.timeToSend()) {
+      oxs_OutFrsky.sendData();
+      readSensors();
+    }
+#else
+    oxs_OutFrsky.sendData()
+#endif
 
     // PPM Processing
     // Read the ppm Signal from receiver
