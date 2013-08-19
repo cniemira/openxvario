@@ -4,6 +4,12 @@
 // started by R.SchloÃƒÅ¸han 
 
 /***************************************************************************************/
+/* FrSky protocol to be used                                                           */
+/***************************************************************************************/
+#define FRSKY_SPORT
+#define SENSOR_ID    0x00
+
+/***************************************************************************************/
 /* Other Configuration Options  => various different values to take influence on       */
 /*                    various stuff. Normaly you do not have to change any of these    */
 /***************************************************************************************/

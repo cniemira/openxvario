@@ -4,13 +4,13 @@
 
 #include "OXS_OUT_FRSKY.h"
 #include "HardwareSerial.h"
-#include "oxs_config.h"
 
 OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print) : 
-// Software Serial is used including the Inverted Signal option ( the "true" in the line below ) 
-// Pin PIN_SerialTX has to be connected to rx pin of the receiver
-// we do not need the RX so we set it to 0
-_mySerial(SoftwareSerial(0,pinTx,true))  // the true is inverting the signal of the RS232 interface
+#if defined(FRSKY_SPORT)
+_mySerial(pinTx,pinTx,/*invert=*/true)
+#else
+_mySerial(0,pinTx,true)  // the true is inverting the signal of the RS232 interface
+#endif
 {
   _pinTx=pinTx;
   printer = &print; //operate on the address of print
@@ -19,15 +19,22 @@ _mySerial(SoftwareSerial(0,pinTx,true))  // the true is inverting the signal of 
 // **************** Setup the FRSky OutputLib *********************
 void OXS_OUT_FRSKY::setup()
 {
-  _mySerial=SoftwareSerial(0, _pinTx,true); // RX, TX
+#if defined(FRSKY_SPORT)
+  _mySerial.begin(57600);
+  _mySerial.listen();
+  crc = 0;
+  counter = 0;
+#else
   _mySerial.begin(9600);
+#endif
+
 #ifdef DEBUG
   printer->begin(115200);
   printer->print("FRSky Output Module: TX Pin=");
   printer->println(_pinTx);
   printer->println("FRSky Output Module: Setup!");
 #endif
-#ifdef FORCE_ABSOLUTE_ALT
+#ifdef FORCE_ABSOLUTE_ALT && !defined(FRSKY_SPORT)
   SendAlt(1);  // send initial height
   SendValue(0x00,int16_t(1)); //>> overwrite alt offset in open 9x in order to start with display of absolute altitude... 
   SendValue(0x30,(int16_t)(varioData->absoluteAlt/100)); //>> overwrite min alt in open 9x
@@ -36,6 +43,90 @@ void OXS_OUT_FRSKY::setup()
 #endif
 }
 
+#if defined(FRSKY_SPORT)
+bool OXS_OUT_FRSKY::timeToSend()
+{
+  static uint8_t lastRx = 0;
+
+  while (_mySerial.available()) {
+    int rx = _mySerial.read();
+    if (lastRx == 0x7e && rx == SENSOR_ID) {
+      lastRx = 0;
+      return true;
+    }
+    lastRx = rx;
+  }
+
+  return false;
+}
+
+void OXS_OUT_FRSKY::sendByte(uint8_t byte)
+{
+  _mySerial.write(byte);
+
+  // CRC update
+  crc += byte; //0-1FF
+  crc += crc >> 8; //0-100
+  crc &= 0x00ff;
+  crc += crc >> 8; //0-0FF
+  crc &= 0x00ff;
+}
+
+void OXS_OUT_FRSKY::sendCrc()
+{
+  _mySerial.write(0xFF-crc);
+
+  // CRC reset
+  crc = 0;
+}
+
+void OXS_OUT_FRSKY::sendValue(uint16_t id, uint32_t value)
+{
+  sendByte(0x10); // DATA_FRAME
+  uint8_t *bytes = (uint8_t*)&id;
+  sendByte(bytes[0]);
+  sendByte(bytes[1]);
+  bytes = (uint8_t*)&value;
+  sendByte(bytes[0]);
+  sendByte(bytes[1]);
+  sendByte(bytes[2]);
+  sendByte(bytes[3]);
+  sendCrc();
+}
+
+#define ALT_ID       0x0100
+#define VARIO_ID     0x0110
+
+enum SportFieldType {
+  e_sport_vario,
+  e_sport_altitude
+};
+
+SportFieldType sport_fields[] = {
+  e_sport_vario,
+  e_sport_vario,
+  e_sport_vario,
+  e_sport_altitude,
+};
+
+void OXS_OUT_FRSKY::sendData()
+{
+  switch (sport_fields[counter]) {
+
+    case e_sport_vario:  
+      sendValue(VARIO_ID, varioData->climbRate);
+      break;
+      
+    case e_sport_altitude:  
+      sendValue(ALT_ID, varioData->absoluteAlt);
+      break;
+
+  }
+
+  counter = ((counter + 1) % (sizeof(sport_fields) / sizeof(sport_fields[0])));
+}
+
+#else
 /****************************************************************/
 /* sendData - Output data to the FrSky Receiver/Transceiver     */
 /****************************************************************/
@@ -322,7 +413,7 @@ void OXS_OUT_FRSKY::SendAlt(long altcm)
 {
   uint16_t Centimeter =  uint16_t(abs(altcm)%100);
   long Meter;
-#ifdef FORCE_ABSOLUTE_ALT
+#ifdef FORCE_ABSOLUTE_ALT && !defined(FRSKY_SPORT)
   altcm-=1;
 #endif
 
@@ -374,6 +465,7 @@ void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps)
 #endif 
   SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
 }
+#endif
 
 
 
