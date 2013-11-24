@@ -6,8 +6,8 @@
 /***************************************************************************************/
 /* FrSky protocol to be used                                                           */
 /***************************************************************************************/
-#define FRSKY_SPORT
-#define SENSOR_ID    0x00
+#define FRSKY_SPORT	1
+#define SENSOR_ID    0xBA
 
 /***************************************************************************************/
 /* Other Configuration Options  => various different values to take influence on       */
@@ -78,8 +78,14 @@
 #define PIN_SerialTX        4  // 4  the pin to transmit the serial data to the frsky telemetry enabled receiver
 
 #define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
-                               // you can uncomment this line if you want to completly disable the remote control functionality
-                               
+//                               // you can uncomment this line if you want to completly disable the remote control functionality
+
+#ifdef PIN_PPM
+ #if PIN_PPM == 2
+	#define PPM_INTERRUPT				ON // define to use interrupt code in Aserial.cpp
+ #endif
+#endif
+
 #define PIN_CurrentSensor   2  // the Analog pin the optional current Sensor is connected to 
 #define PIN_VOLTAGE_DIVIDER 3  // Optional! a voltage divider to measure the battery pack voltage > 5v (see below)
 
