@@ -1,7 +1,6 @@
 #ifndef OXS_OUT_FRSKY_h
 #define OXS_OUT_FRSKY_h
 
-#include <../../../../libraries/SoftwareSerial/SoftwareSerial.h>
 #include "Arduino.h"
 #include "oxs_config.h"
 #include "OXS_MS5611.h" // we need the variodata struct
@@ -57,9 +56,6 @@ class OXS_OUT_FRSKY {
     ARDUINODATA* arduinoData ;
     void setup();
     
-#if defined(FRSKY_SPORT)
-    bool timeToSend();
-#endif
 
     void sendData();
     
@@ -79,15 +75,6 @@ class OXS_OUT_FRSKY {
     void SendGPSAlt(long altcm);
     void SendFuel(uint16_t fuel);
     void SendCurrentMilliAmps(int32_t milliamps);
-    SoftwareSerial _mySerial;
-
-#if defined(FRSKY_SPORT)
-    short crc;
-    uint8_t counter;
-    void sendByte(uint8_t byte);
-    void sendValue(uint16_t id, uint32_t value);
-    void sendCrc();
-#endif
     
 };
 

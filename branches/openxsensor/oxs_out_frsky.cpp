@@ -1,129 +1,65 @@
 
-#include <../../../../libraries/SoftwareSerial/SoftwareSerial.h>
+#include "oxs_config.h"
 #include "Arduino.h"
 
 #include "OXS_OUT_FRSKY.h"
 #include "HardwareSerial.h"
+#include "Aserial.h"
 
-OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print) : 
 #if defined(FRSKY_SPORT)
-_mySerial(pinTx,pinTx,/*invert=*/true)
-#else
-_mySerial(0,pinTx,true)  // the true is inverting the signal of the RS232 interface
+struct t_sportData MyData[2] ;
 #endif
+
+OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print)
 {
-  _pinTx=pinTx;
   printer = &print; //operate on the address of print
 }
 
 // **************** Setup the FRSky OutputLib *********************
 void OXS_OUT_FRSKY::setup()
 {
-#if defined(FRSKY_SPORT)
-  _mySerial.begin(57600);
-  _mySerial.listen();
-  crc = 0;
-  counter = 0;
-#else
-  _mySerial.begin(9600);
-#endif
 
+#if defined(FRSKY_SPORT)
+	MyData[0].next = &MyData[1] ;
+	initSportUart( &MyData[0] ) ;
+#else
+	initHubUart() ;
+#endif
+	
 #ifdef DEBUG
   printer->begin(115200);
   printer->print("FRSky Output Module: TX Pin=");
   printer->println(_pinTx);
   printer->println("FRSky Output Module: Setup!");
 #endif
-#ifdef FORCE_ABSOLUTE_ALT && !defined(FRSKY_SPORT)
+#if defined(FORCE_ABSOLUTE_ALT) && !defined(FRSKY_SPORT)
   SendAlt(1);  // send initial height
   SendValue(0x00,int16_t(1)); //>> overwrite alt offset in open 9x in order to start with display of absolute altitude... 
   SendValue(0x30,(int16_t)(varioData->absoluteAlt/100)); //>> overwrite min alt in open 9x
   SendValue(0x31,(int16_t)(varioData->absoluteAlt/100)); //>> overwrite min alt in open 9x
-  _mySerial.write(0x5E); // End of Frame 1!
+  sendHubByte(0x5E) ; // End of Frame 1!
 #endif
 }
 
 #if defined(FRSKY_SPORT)
-bool OXS_OUT_FRSKY::timeToSend()
-{
-  static uint8_t lastRx = 0;
-
-  while (_mySerial.available()) {
-    int rx = _mySerial.read();
-    if (lastRx == 0x7e && rx == SENSOR_ID) {
-      lastRx = 0;
-      return true;
-    }
-    lastRx = rx;
-  }
-
-  return false;
-}
-
-void OXS_OUT_FRSKY::sendByte(uint8_t byte)
-{
-  _mySerial.write(byte);
-
-  // CRC update
-  crc += byte; //0-1FF
-  crc += crc >> 8; //0-100
-  crc &= 0x00ff;
-  crc += crc >> 8; //0-0FF
-  crc &= 0x00ff;
-}
-
-void OXS_OUT_FRSKY::sendCrc()
-{
-  _mySerial.write(0xFF-crc);
-
-  // CRC reset
-  crc = 0;
-}
-
-void OXS_OUT_FRSKY::sendValue(uint16_t id, uint32_t value)
-{
-  sendByte(0x10); // DATA_FRAME
-  uint8_t *bytes = (uint8_t*)&id;
-  sendByte(bytes[0]);
-  sendByte(bytes[1]);
-  bytes = (uint8_t*)&value;
-  sendByte(bytes[0]);
-  sendByte(bytes[1]);
-  sendByte(bytes[2]);
-  sendByte(bytes[3]);
-  sendCrc();
-}
 
 #define ALT_ID       0x0100
 #define VARIO_ID     0x0110
 
-enum SportFieldType {
-  e_sport_vario,
-  e_sport_altitude
-};
-
-SportFieldType sport_fields[] = {
-  e_sport_vario,
-  e_sport_vario,
-  e_sport_vario,
-  e_sport_altitude,
-};
-
 void OXS_OUT_FRSKY::sendData()
 {
-  switch (sport_fields[counter]) {
-
-    case e_sport_vario:  
-      sendValue(VARIO_ID, varioData->climbRate);
+	static uint8_t counter ;
+  switch ( counter)
+	{
+    case 0 :  
+			setNewData( &MyData[1], VARIO_ID, varioData->climbRate ) ;
       break;
-      
-    case e_sport_altitude:  
-      sendValue(ALT_ID, varioData->absoluteAlt);
+     
+    case 1 :
+			setNewData( &MyData[0], ALT_ID, varioData->absoluteAlt ) ;
       break;
-
   }
-
-  counter = ((counter + 1) % (sizeof(sport_fields) / sizeof(sport_fields[0])));
+  counter = (counter + 1) & 1 ;
 }
 
 #else
@@ -225,7 +161,7 @@ void OXS_OUT_FRSKY::SendFrame1A(){
 
 
   }
-  _mySerial.write(0x5E); // End of Frame 1!
+  sendHubByte(0x5E) ; // End of Frame 1!
 }
 //============================================================================================================== Send Frame 1B via serial
 void OXS_OUT_FRSKY::SendFrame1B(){
@@ -317,7 +253,7 @@ void OXS_OUT_FRSKY::SendFrame1B(){
 #ifdef SEND_DividerVoltageAsDist
   SendGPSDist( uint16_t(arduinoData->dividerMilliVolts) );
 #endif
-  _mySerial.write(0x5E); // End of Frame 1!
+  sendHubByte(0x5E) ; // End of Frame 1!
 }
 
 
@@ -336,29 +272,29 @@ void OXS_OUT_FRSKY::SendFrame2(){
 void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
   uint8_t tmp1 = Value & 0x00ff;
   uint8_t tmp2 = (Value & 0xff00)>>8;
-  _mySerial.write(0x5E);  
-  _mySerial.write(ID);
+  sendHubByte(0x5E) ;
+  sendHubByte(ID);
   if(tmp1 == 0x5E) { 
-    _mySerial.write(0x5D);    
-    _mySerial.write(0x3E);  
+    sendHubByte(0x5D);    
+    sendHubByte(0x3E);  
   } 
   else if(tmp1 == 0x5D) {    
-    _mySerial.write(0x5D);    
-    _mySerial.write(0x3D);  
+    sendHubByte(0x5D);    
+    sendHubByte(0x3D);  
   } 
   else {    
-    _mySerial.write(tmp1);  
+    sendHubByte(tmp1);  
   }
   if(tmp2 == 0x5E) {    
-    _mySerial.write(0x5D);    
-    _mySerial.write(0x3E);  
+    sendHubByte(0x5D);    
+    sendHubByte(0x3E);  
   } 
   else if(tmp2 == 0x5D) {    
-    _mySerial.write(0x5D);    
-    _mySerial.write(0x3D);  
+    sendHubByte(0x5D);    
+    sendHubByte(0x3D);  
   } 
   else {    
-    _mySerial.write(tmp2);  
+    sendHubByte(tmp2);  
   }
   // mySerial.write(0x5E);
 }

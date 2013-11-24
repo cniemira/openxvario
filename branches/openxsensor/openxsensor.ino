@@ -4,13 +4,13 @@
 #include "oxs_ms5611.h"
 #include "oxs_curr.h"
 #include "oxs_out_frsky.h"
-#include <SoftwareSerial.h>
 
 #ifdef SAVE_TO_EEPROM
 #include <EEPROM.h>
 #include "EEPROMAnything.h"
 #endif
 
+#include "Aserial.h"
 
 // #define DEBUG
 #define VARIO
@@ -62,6 +62,15 @@ void setup(){
 #ifdef SAVE_TO_EEPROM
   LoadFromEEProm();
 #endif
+
+#ifdef PPM_INTERRUPT
+	PORTD |= 2 ;	// Pullup resistor
+	DDRD &= ~2 ;	// Input
+	EICRA |= 3 ;		// Interrupt on rising edge
+	EIFR = 1 ;			// Clear interrupt flag
+	EIMSK |= 1 ;		// Enable interrupt
+#endif
+
 }
 
 void readSensors()
@@ -89,9 +98,7 @@ void loop(){
   static unsigned long LastOutputMs=millis();
   loopcnt+=1;
   
-#if !defined(FRSKY_SPORT)
-  readSensors();
-#endif
+//  readSensors();
   
 #ifdef PIN_PushButton
   // Check if a button has been pressed
@@ -117,12 +124,18 @@ void loop(){
     oxs_OutFrsky.arduinoData=&oxs_Arduino.arduinoData;
 
 #if defined(FRSKY_SPORT)
-    if (oxs_OutFrsky.timeToSend()) {
-      oxs_OutFrsky.sendData();
+    if (SportSync)
+		{
+			SportSync = 0 ;
       readSensors();
     }
+    if (DataSent)
+		{
+	 		DataSent = 0 ;
+      oxs_OutFrsky.sendData();
+		}
 #else
-    oxs_OutFrsky.sendData()
+    oxs_OutFrsky.sendData();
 #endif
 
     // PPM Processing
@@ -135,7 +148,7 @@ void loop(){
   }//if (millis()>LastOutputMs+100)
 #ifdef SAVE_TO_EEPROM
   static unsigned long LastEEPromMs=millis();
-  if (millis()>LastEEPromMs+1000){ // Save Persistant Data To EEProm every 10 seconds
+  if (millis()>LastEEPromMs+10000){ // Save Persistant Data To EEProm every 10 seconds
     LastEEPromMs=millis();
     SaveToEEProm();
   }
@@ -360,6 +373,48 @@ void ProcessPPMSignal(){
 /*   pre-evaluate its value for validity                  */
 /**********************************************************/
 
+#ifdef PPM_INTERRUPT
+uint16_t StartTime ;
+uint16_t EndTime ;
+uint8_t PulseTime ;		// A byte to avoid 
+
+ISR(INT0_vect, ISR_NOBLOCK)
+{
+	cli() ;
+	uint16_t time = TCNT1 ;	// Read timer 1
+	sei() ;
+	if ( EICRA & 1 )
+	{
+		StartTime = time ;
+		EICRA &= ~1 ;				// falling edge
+	}
+	else
+	{
+		EndTime = time ;		
+		time -= StartTime ;
+		time >>= 7 ;		// Nominal 125 to 250
+		time -= 60 ;		// Nominal 65 to 190
+		if ( time > 255 )
+		{
+			time = 255 ;			
+		}
+		PulseTime = time ;
+		EICRA |= 1 ;				// Rising edge
+	}
+}
+
+unsigned long ReadPPM()
+{
+	unsigned int ppm = PulseTime ;
+	ppm += 60 ;
+	ppm <<= 3 ;	// To microseconds
+	if ((ppm>2500)or (ppm<500)) ppm=0 ; // no signal!
+  
+	return ppm ;
+}
+
+
+#else
 // ReadPPM - Read ppm signal and detect if there is no signal
 
 unsigned long ReadPPM(){
@@ -370,6 +425,10 @@ unsigned long ReadPPM(){
   if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
   return ppm;
 }
+
+#endif
+
+
 #endif //PIN_PPM
 
 
