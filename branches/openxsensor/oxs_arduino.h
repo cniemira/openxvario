@@ -1,7 +1,7 @@
 #ifndef OXS_ARDUINO_h
 #define OXS_ARDUINO_h
 
-#include "arduino.h"
+#include "Arduino.h"
 
 struct ARDUINODATA {
   bool available;                   // true if data is available

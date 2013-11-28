@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "OXS_MS5611.h"
+#include "oxs_ms5611.h"
 #include "HardwareSerial.h"
 
 OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r) {
