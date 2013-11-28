@@ -3,9 +3,9 @@
 
 #include "Arduino.h"
 #include "oxs_config.h"
-#include "OXS_MS5611.h" // we need the variodata struct
-#include "OXS_curr.h" // we need the currentdata struct
-#include "OXS_arduino.h" // we need the arduinodata struct
+#include "oxs_ms5611.h" // we need the variodata struct
+#include "oxs_curr.h" // we need the currentdata struct
+#include "oxs_arduino.h" // we need the arduinodata struct
 
 #define INTERVAL_FRAME1 100
 #define INTERVAL_FRAME2 1000

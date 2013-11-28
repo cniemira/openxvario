@@ -2,7 +2,7 @@
 #include "oxs_config.h"
 #include "Arduino.h"
 
-#include "OXS_OUT_FRSKY.h"
+#include "oxs_out_FRSKY.h"
 #include "HardwareSerial.h"
 #include "Aserial.h"
 
