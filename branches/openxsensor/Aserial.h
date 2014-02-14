@@ -34,3 +34,6 @@ void sendHubByte( uint8_t byte ) ;
 
 #endif // FRSKY_SPORT
 
+unsigned long micros( void ) ;
+unsigned long millis( void ) ;
+

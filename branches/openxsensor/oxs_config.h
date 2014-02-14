@@ -79,10 +79,21 @@
 
 #define PIN_PPM 2              // default: 2 the pin to read the PPM Signal on coming from the receiver.           
 //                               // you can uncomment this line if you want to completly disable the remote control functionality
-
+//                             Only use pins 2 or 3 for PPM
 #ifdef PIN_PPM
  #if PIN_PPM == 2
 	#define PPM_INTERRUPT				ON // define to use interrupt code in Aserial.cpp
+	#define PPM_INT_MASK				3
+	#define PPM_INT_EDGE				1
+	#define PPM_PIN_HEX					0x02
+	#define PPM_INT_BIT					0x01
+ #endif
+ #if PIN_PPM == 3
+	#define PPM_INTERRUPT				ON // define to use interrupt code in Aserial.cpp
+	#define PPM_INT_MASK				0x0C
+	#define PPM_INT_EDGE				0x04
+	#define PPM_PIN_HEX					0x04
+	#define PPM_INT_BIT					0x02
  #endif
 #endif
 
@@ -163,6 +174,15 @@
 //#define SAVE_TO_EEPROM      // Uncomment this to disable the persistent storage 
 //#define SEND_MIN_MAX_ALT
 //#define SEND_MAX_CURRENT
+
+#define MEASURE_RPM	1
+
+// #define DEBUG
+
+#ifdef DEBUG
+#include "HardwareSerial.h"
+#endif
+
 
 #endif
 

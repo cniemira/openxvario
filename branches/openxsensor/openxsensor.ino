@@ -1,4 +1,4 @@
-#include <Wire.h>
+//#include <Wire.h>
 #include "oxs_config.h"
 #include "oxs_arduino.h"
 #include "oxs_ms5611.h"
@@ -12,20 +12,42 @@
 
 #include "Aserial.h"
 
+extern unsigned long micros( void ) ;
+extern unsigned long millis( void ) ;
+
 // #define DEBUG
 #define VARIO
 
 // Create instances of the used classes
 #ifdef VARIO
+#ifdef DEBUG  
 OXS_MS5611 oxs_MS5611(I2CAdd,Serial,KALMAN_R);
+#else
+OXS_MS5611 oxs_MS5611(I2CAdd,KALMAN_R);
+#endif
 #endif
 
 #ifdef PIN_CurrentSensor
+#ifdef DEBUG  
 OXS_CURRENT oxs_Current(PIN_CurrentSensor,Serial);
+#else
+OXS_CURRENT oxs_Current(PIN_CurrentSensor);
 #endif
-OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX,Serial);
-OXS_ARDUINO oxs_Arduino(Serial);
+#endif
 
+#ifdef DEBUG  
+OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX,Serial);
+#else
+OXS_OUT_FRSKY oxs_OutFrsky(PIN_SerialTX);
+#endif
+
+#ifdef DEBUG  
+OXS_ARDUINO oxs_Arduino(Serial);
+#else
+OXS_ARDUINO oxs_Arduino(0);
+#endif
+
+#define FORCE_INDIRECT(ptr) __asm__ __volatile__ ("" : "=e" (ptr) : "0" (ptr))
 
 
 //************************************************************************************************** Setup()
@@ -64,11 +86,11 @@ void setup(){
 #endif
 
 #ifdef PPM_INTERRUPT
-	PORTD |= 2 ;	// Pullup resistor
-	DDRD &= ~2 ;	// Input
-	EICRA |= 3 ;		// Interrupt on rising edge
-	EIFR = 1 ;			// Clear interrupt flag
-	EIMSK |= 1 ;		// Enable interrupt
+	PORTD |= PPM_PIN_HEX ;	// Pullup resistor
+	DDRD &= ~PPM_PIN_HEX ;	// Input
+	EICRA |= PPM_INT_MASK ;		// Interrupt on rising edge
+	EIFR = PPM_INT_BIT ;			// Clear interrupt flag
+	EIMSK |= PPM_INT_BIT ;		// Enable interrupt
 #endif
 
 }
@@ -99,6 +121,8 @@ void loop(){
   loopcnt+=1;
   
 //  readSensors();
+//extern uint32_t newMillis( void ) ;
+//	millis() ;
   
 #ifdef PIN_PushButton
   // Check if a button has been pressed
@@ -107,7 +131,23 @@ void loop(){
 
   if (TIME_TO_SEND()) { // invoke output routines every 50ms if there's something new to do.
     loopcnt=0; 
+#if defined(FRSKY_SPORT)
+#ifdef MEASURE_RPM
+	if ( millis() > LastOutputMs+2000 )
+	{
+		LastOutputMs += 2000 ;
+extern uint8_t RpmSet ;
+extern uint16_t Rpm ;
+		if ( RpmSet == 0 )
+		{
+			Rpm = 0 ;			
+		}
+		RpmSet = 0 ;		 
+	}
+#endif // MEASURE_RPM
+#else
     LastOutputMs=millis();  
+#endif
     // OutputModule go here
 #ifdef DEBUG
     OutputToSerial();
@@ -159,7 +199,7 @@ void loop(){
 void checkButton()
 {
   static int lastSensorVal=HIGH;
-  static unsigned long buttonDownMs;
+  static unsigned int buttonDownMs;
   //read the pushbutton value into a variable
   int sensorVal = digitalRead(PIN_PushButton);
   if (sensorVal == HIGH) {
@@ -168,7 +208,7 @@ void checkButton()
   }
   else {
     //button is currently being pressed down
-    unsigned long buttonPressDuration=millis()-buttonDownMs;
+    unsigned int buttonPressDuration=millis()-buttonDownMs;
 
     if( (buttonPressDuration>1000) and (buttonPressDuration<1200) )
       digitalWrite(PIN_LED, LOW); // Blink after 1 second
@@ -192,7 +232,7 @@ void checkButton()
   }
   if( (lastSensorVal==LOW) && (sensorVal==HIGH))
   { // Button has been released
-    unsigned long buttonPressDuration=millis()-buttonDownMs;
+    unsigned int buttonPressDuration=millis()-buttonDownMs;
     //Serial.print("Button Released after ms:");
     //Serial.println(buttonPressDuration);
     // Do Something after certain times the button has been pressed for....
@@ -215,16 +255,20 @@ void Reset1SecButtonPress()
 #endif
 
 #ifdef PIN_CurrentSensor
-  oxs_Current.currentData.maxMilliAmps=oxs_Current.currentData.milliAmps;
-  oxs_Current.currentData.minMilliAmps=oxs_Current.currentData.milliAmps;
+	struct CURRENTDATA *cd = &oxs_Current.currentData ;
+	FORCE_INDIRECT(cd) ;
+  cd->maxMilliAmps=cd->milliAmps;
+  cd->minMilliAmps=cd->milliAmps;
 #endif
 #ifdef VARIO
-  oxs_MS5611.varioData.maxAbsAlt=oxs_MS5611.varioData.absoluteAlt;
-  oxs_MS5611.varioData.minAbsAlt=oxs_MS5611.varioData.absoluteAlt;
-  oxs_MS5611.varioData.maxRelAlt=oxs_MS5611.varioData.relativeAlt;
-  oxs_MS5611.varioData.minRelAlt=oxs_MS5611.varioData.relativeAlt;
-  oxs_MS5611.varioData.minClimbRate=oxs_MS5611.varioData.climbRate;
-  oxs_MS5611.varioData.maxClimbRate=oxs_MS5611.varioData.climbRate;
+	struct VARIODATA *vd = &oxs_MS5611.varioData ;
+	FORCE_INDIRECT(vd) ;
+  vd->maxAbsAlt=vd->absoluteAlt;
+  vd->minAbsAlt=vd->absoluteAlt;
+  vd->maxRelAlt=vd->relativeAlt;
+  vd->minRelAlt=vd->relativeAlt;
+  vd->minClimbRate=vd->climbRate;
+  vd->maxClimbRate=vd->climbRate;
 #endif
   oxs_Arduino.resetValues();
 }
@@ -354,9 +398,11 @@ void LoadFromEEProm(){
 #ifdef PIN_PPM
 void ProcessPPMSignal(){
   static boolean SignalPresent= false;
-  unsigned long ppm= ReadPPM();
+  unsigned int ppm= ReadPPM();
+#ifdef DEBUG
   Serial.print("ppm=");
   Serial.println(ppm);
+#endif
   static unsigned int ppm_min=PPM_Range_min;
   static unsigned int ppm_max=PPM_Range_max;
   if (ppm>0){
@@ -378,15 +424,19 @@ uint16_t StartTime ;
 uint16_t EndTime ;
 uint8_t PulseTime ;		// A byte to avoid 
 
+#if PIN_PPM == 2
 ISR(INT0_vect, ISR_NOBLOCK)
+#else
+ISR(INT1_vect, ISR_NOBLOCK)
+#endif
 {
 	cli() ;
 	uint16_t time = TCNT1 ;	// Read timer 1
 	sei() ;
-	if ( EICRA & 1 )
+	if ( EICRA & PPM_INT_EDGE )
 	{
 		StartTime = time ;
-		EICRA &= ~1 ;				// falling edge
+		EICRA &= ~PPM_INT_EDGE ;				// falling edge
 	}
 	else
 	{
@@ -399,11 +449,11 @@ ISR(INT0_vect, ISR_NOBLOCK)
 			time = 255 ;			
 		}
 		PulseTime = time ;
-		EICRA |= 1 ;				// Rising edge
+		EICRA |= PPM_INT_EDGE ;				// Rising edge
 	}
 }
 
-unsigned long ReadPPM()
+unsigned int ReadPPM()
 {
 	unsigned int ppm = PulseTime ;
 	ppm += 60 ;
@@ -413,18 +463,18 @@ unsigned long ReadPPM()
 	return ppm ;
 }
 
+// Removed as will no longer work
+//#else
+//// ReadPPM - Read ppm signal and detect if there is no signal
 
-#else
-// ReadPPM - Read ppm signal and detect if there is no signal
-
-unsigned long ReadPPM(){
-  unsigned long ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
-#ifdef DEBUG
-  //Serial.print("PPM=");Serial.println(ppm);
-#endif
-  if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
-  return ppm;
-}
+//unsigned int ReadPPM(){
+//  unsigned int ppm= pulseIn(PIN_PPM, HIGH, 20000); // read the pulse length in micro seconds
+//#ifdef DEBUG
+//  //Serial.print("PPM=");Serial.println(ppm);
+//#endif
+//  if ((ppm>2500)or (ppm<500))ppm=0; // no signal!
+//  return ppm;
+//}
 
 #endif
 
@@ -433,6 +483,7 @@ unsigned long ReadPPM(){
 
 
 
+#ifdef DEBUG
 
 void OutputToSerial(){
 #define DEBUGMINMAX
@@ -528,5 +579,6 @@ int freeRam () {
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
+#endif	// DEBUG
 
 
