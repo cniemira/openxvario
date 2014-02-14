@@ -1,9 +1,17 @@
 #include "Arduino.h"
 #include "oxs_curr.h"
-#include "HardwareSerial.h"
-OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print) {
+#include "Aserial.h"
+
+#ifdef DEBUG  
+OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print)
+#else
+OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent)
+#endif
+{
   // constructor
+#ifdef DEBUG  
   printer = &print; //operate on the address of print
+#endif
   _microsLastCurrent=0;
   _pinCurrent=pinCurrent;
   pinMode(pinCurrent,INPUT); 
@@ -12,23 +20,24 @@ OXS_CURRENT::OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print) {
   printer->print("Current sensor on pin:");
   printer->println(pinCurrent);
 #endif
+ CurrentSum = 0 ;
 }
 
 // **************** Setup the Current sensor *********************
-void OXS_CURRENT::setupMinMaxA( int32_t milliAmps0V,int32_t milliAmps5V)
-{
-  currentData.milliAmps0V=milliAmps0V;
-  currentData.milliAmps5V=milliAmps5V;
+//void OXS_CURRENT::setupMinMaxA( int32_t milliAmps0V,int32_t milliAmps5V)
+//{
+//  currentData.milliAmps0V=milliAmps0V;
+//  currentData.milliAmps5V=milliAmps5V;
 
-  currentData.milliVoltPerAmpere=5000/  ((milliAmps5V-milliAmps0V)/1000);
-  currentData.idleMilliVolts=abs((int32_t)milliAmps0V)*(int32_t)currentData.milliVoltPerAmpere/1000;
+//  currentData.milliVoltPerAmpere=5000/  ((milliAmps5V-milliAmps0V)/1000);
+//  currentData.idleMilliVolts=abs((int32_t)milliAmps0V)*(int32_t)currentData.milliVoltPerAmpere/1000;
 
-#ifdef DEBUG  
-  debugSendSetup();
-#endif
-  prefillBuffer();
-  resetValues();
-}
+//#ifdef DEBUG  
+//  debugSendSetup();
+//#endif
+//  prefillBuffer();
+//  resetValues();
+//}
 void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpere)
 {
   currentData.milliVoltPerAmpere=milliVoltPerAmpere;
@@ -36,7 +45,9 @@ void OXS_CURRENT::setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpe
   currentData.milliAmps0V=(int32_t)idleMilliVolts*1000/(int32_t)milliVoltPerAmpere*-1 ;
   currentData.milliAmps5V=(1000*(5000-(int32_t)idleMilliVolts))/(int32_t)milliVoltPerAmpere;
 
+#ifdef DEBUG
   debugSendSetup();
+#endif
   prefillBuffer();
   resetValues();
 }
@@ -59,6 +70,7 @@ void OXS_CURRENT::prefillBuffer()
 /****************************************************************/
 /* debugSendSetup - Send the current setup data via debug..     */
 /****************************************************************/
+#ifdef DEBUG
 void OXS_CURRENT::debugSendSetup()
 {
   printer->println("Current sensor setup:");
@@ -73,6 +85,7 @@ void OXS_CURRENT::debugSendSetup()
   printer->print("mA@5V=");
   printer->println(currentData.milliAmps5V);
 }
+#endif
 
 void OXS_CURRENT::readSensor(uint16_t vRef)
 {
@@ -105,13 +118,13 @@ void OXS_CURRENT::readSensor(uint16_t vRef)
 /* Rotating Buffer for calculating the Average Current         */
 /****************************************************************/
 void OXS_CURRENT::SaveCurrent(long current){
-  static int cnt =0;
-  static long sum =0;
-  sum+=current;
+  static unsigned char cnt =0;
+//  static long sum =0;
+  CurrentSum+=current;
   cnt++;
-  if(cnt==CURRENT_BUFFER_LENGTH){
-    currentData.milliAmps=sum/CURRENT_BUFFER_LENGTH;
-    sum=0;
+  if(cnt>=CURRENT_BUFFER_LENGTH){
+    currentData.milliAmps=CurrentSum/CURRENT_BUFFER_LENGTH;
+    CurrentSum=0;
     cnt=0;
     if(currentData.minMilliAmps>currentData.milliAmps)currentData.minMilliAmps=currentData.milliAmps;
     if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;

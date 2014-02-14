@@ -2,7 +2,6 @@
 #define OXS_MS5611_h
 
 #include "Arduino.h"
-#include <Wire.h>
 
 #define PressureCalibrationOffset 0
 #define EXTRA_PRECISION 5
@@ -29,7 +28,11 @@ struct VARIODATA {
 };
 class OXS_MS5611 {
 public:
+#ifdef DEBUG  
   OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r);
+#else
+	OXS_MS5611(uint8_t addr, uint16_t kalman_r) ;
+#endif
   VARIODATA varioData ;
   int64_t rawPressure; // in 1/100 mBar
   void setup();
@@ -41,8 +44,10 @@ private:
   uint8_t _addr;
   unsigned int _calibrationData[7]; // The factory calibration data of the ms5611
   void SendCommand(byte command);
-  long getData(byte command, byte del);
+//  long getData(byte command, byte del);
+#ifdef DEBUG  
   HardwareSerial* printer;
+#endif
  
  //void kalman_update(float measurement);
  void kalman_update(int64_t measurement);

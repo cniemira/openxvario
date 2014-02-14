@@ -50,7 +50,11 @@
 
 class OXS_OUT_FRSKY {
   public:
+#ifdef DEBUG  
     OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print);
+#else
+    OXS_OUT_FRSKY(uint8_t pinTx);
+#endif
     VARIODATA* varioData ;
     CURRENTDATA* currentData ;
     ARDUINODATA* arduinoData ;
@@ -61,7 +65,9 @@ class OXS_OUT_FRSKY {
     
   private:
     uint8_t _pinTx;
+#ifdef DEBUG  
     HardwareSerial* printer;
+#endif
     void SendFrame1A();
     void SendFrame1B();
     void SendFrame2();
@@ -70,7 +76,8 @@ class OXS_OUT_FRSKY {
     void SendGPSDist(uint16_t dist);
     void SendTemperature1(int16_t tempc);
     void SendTemperature2(int16_t tempc);
-    void SendRPM(uint16_t rpm) ;
+    void SendRPM(uint16_t rpm)
+			{ SendValue(FRSKY_USERDATA_RPM, rpm);	} ;
     void SendAlt(long altcm);
     void SendGPSAlt(long altcm);
     void SendFuel(uint16_t fuel);

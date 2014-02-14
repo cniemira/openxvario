@@ -3,16 +3,24 @@
 #include "Arduino.h"
 
 #include "oxs_out_FRSKY.h"
-#include "HardwareSerial.h"
 #include "Aserial.h"
+
+extern unsigned long micros( void ) ;
+extern unsigned long millis( void ) ;
 
 #if defined(FRSKY_SPORT)
 struct t_sportData MyData[2] ;
 #endif
 
+#ifdef DEBUG  
 OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx,HardwareSerial &print)
+#else
+OXS_OUT_FRSKY::OXS_OUT_FRSKY(uint8_t pinTx)
+#endif
 {
+#ifdef DEBUG  
   printer = &print; //operate on the address of print
+#endif
 }
 
 // **************** Setup the FRSky OutputLib *********************
@@ -41,14 +49,26 @@ void OXS_OUT_FRSKY::setup()
 #endif
 }
 
+#ifdef MEASURE_RPM
+extern uint16_t Rpm ;
+#endif // MEASURE_RPM
+
 #if defined(FRSKY_SPORT)
 
 #define ALT_ID       0x0100
 #define VARIO_ID     0x0110
+#define CURR_ID      0x0200
+#define VFAS_ID      0x0210
+#define RPM_ID       0x0003		// Hub value, works on SPort as well
+//#define RPM_ID       0x0500		// SPort only value
+
 
 void OXS_OUT_FRSKY::sendData()
 {
   static uint8_t counter ;
+#ifdef MEASURE_RPM
+	static uint8_t counter2 ;
+#endif // MEASURE_RPM
   switch ( counter)
   {
     case 0 :  
@@ -56,7 +76,20 @@ void OXS_OUT_FRSKY::sendData()
       break;
      
     case 1 :
-      setNewData( &MyData[0], ALT_ID, varioData->absoluteAlt ) ;
+#ifdef MEASURE_RPM
+			if ( ++counter2 > 4 )
+			{
+				counter2 = 0 ;
+extern uint16_t Rpm ;
+				setNewData( &MyData[0], RPM_ID, Rpm ) ;
+			}
+			else
+			{
+#endif // MEASURE_RPM
+				setNewData( &MyData[0], ALT_ID, varioData->absoluteAlt ) ;
+#ifdef MEASURE_RPM
+			}
+#endif // MEASURE_RPM
       break;
   }
   counter = (counter + 1) & 1 ;
@@ -68,19 +101,21 @@ void OXS_OUT_FRSKY::sendData()
 /****************************************************************/
 void OXS_OUT_FRSKY::sendData()
 {
-  static unsigned long lastMsFrame1=0;
-  static unsigned long lastMsFrame2=0;
+  static unsigned int lastMsFrame1=0;
+  static unsigned int lastMsFrame2=0;
 
-  if ( (millis()-lastMsFrame1) > INTERVAL_FRAME1  ) {
+	unsigned int temp ;
+	temp = millis() ;
+  if ( (temp-lastMsFrame1) > INTERVAL_FRAME1  ) {
     static byte SwitchFrameVariant=0;
-    lastMsFrame1=millis();
+    lastMsFrame1=temp;
     if (SwitchFrameVariant==0)SendFrame1A();
     if (SwitchFrameVariant==1)SendFrame1B();
     SwitchFrameVariant++;
     if(SwitchFrameVariant==2)SwitchFrameVariant=0 ;
   }
-  if ( (millis()-lastMsFrame2) > INTERVAL_FRAME2  ) {
-    lastMsFrame2=millis();
+  if ( (temp-lastMsFrame2) > INTERVAL_FRAME2  ) {
+    lastMsFrame2=temp;
     SendFrame2();
   }
 }
@@ -204,7 +239,9 @@ void OXS_OUT_FRSKY::SendFrame1B(){
 #ifdef SEND_SensitivityAsRPM
       SendRPM(uint16_t(varioData->paramKalman_r));
 #endif
-
+#ifdef MEASURE_RPM
+      SendRPM( Rpm ) ;
+#endif
 
       //******************************************* Min Max Alt
 #ifdef SEND_MIN_MAX_ALT
@@ -274,28 +311,43 @@ void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
   uint8_t tmp2 = (Value & 0xff00)>>8;
   sendHubByte(0x5E) ;
   sendHubByte(ID);
-  if(tmp1 == 0x5E) { 
-    sendHubByte(0x5D);    
-    sendHubByte(0x3E);  
-  } 
-  else if(tmp1 == 0x5D) {    
-    sendHubByte(0x5D);    
-    sendHubByte(0x3D);  
-  } 
-  else {    
-    sendHubByte(tmp1);  
-  }
-  if(tmp2 == 0x5E) {    
-    sendHubByte(0x5D);    
-    sendHubByte(0x3E);  
-  } 
-  else if(tmp2 == 0x5D) {    
-    sendHubByte(0x5D);    
-    sendHubByte(0x3D);  
-  } 
-  else {    
-    sendHubByte(tmp2);  
-  }
+
+  if ( (tmp1 == 0x5E) || (tmp1 == 0x5D) )
+	{ 
+		tmp1 ^= 0x20 ;
+    sendHubByte(0x5D);
+	}
+  sendHubByte(tmp1);  
+
+  if ( (tmp2 == 0x5E) || (tmp2 == 0x5D) )
+	{ 
+		tmp2 ^= 0x20 ;
+    sendHubByte(0x5D);
+	}
+  sendHubByte(tmp2);
+
+//  if(tmp1 == 0x5E) { 
+//    sendHubByte(0x5D);    
+//    sendHubByte(0x3E);  
+//  } 
+//  else if(tmp1 == 0x5D) {    
+//    sendHubByte(0x5D);    
+//    sendHubByte(0x3D);  
+//  } 
+//  else {    
+//    sendHubByte(tmp1);  
+//  }
+//  if(tmp2 == 0x5E) {    
+//    sendHubByte(0x5D);    
+//    sendHubByte(0x3E);  
+//  } 
+//  else if(tmp2 == 0x5D) {    
+//    sendHubByte(0x5D);    
+//    sendHubByte(0x3D);  
+//  } 
+//  else {    
+//    sendHubByte(tmp2);  
+//  }
   // mySerial.write(0x5E);
 }
 
@@ -329,11 +381,11 @@ void OXS_OUT_FRSKY::SendTemperature2(int16_t tempc) {
 /*************************************/
 /* SendRPM => Send Rounds Per Minute */
 /*************************************/
-void OXS_OUT_FRSKY::SendRPM(uint16_t rpm) {
-  byte blades=2;
-  rpm = uint16_t((float)rpm/(60/blades));  
-  SendValue(FRSKY_USERDATA_RPM, rpm);
-}
+//void OXS_OUT_FRSKY::SendRPM(uint16_t rpm) {
+//  byte blades=2;
+//  rpm = uint16_t((float)rpm/(60/blades));  
+//  SendValue(FRSKY_USERDATA_RPM, rpm);
+//}
 
 /*************************************/
 /* SendFuel => SendFuel Level        */
@@ -349,7 +401,7 @@ void OXS_OUT_FRSKY::SendAlt(long altcm)
 {
   uint16_t Centimeter =  uint16_t(abs(altcm)%100);
   long Meter;
-#ifdef FORCE_ABSOLUTE_ALT && !defined(FRSKY_SPORT)
+#if defined(FORCE_ABSOLUTE_ALT) && !defined(FRSKY_SPORT)
   altcm-=1;
 #endif
 

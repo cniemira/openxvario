@@ -1,8 +1,22 @@
 #include "Arduino.h"
-#include "oxs_ms5611.h"
-#include "HardwareSerial.h"
+#include "oxs_config.h"
+#include "Aserial.h"
 
-OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r) {
+
+#define POLLINGI2C	1
+#ifdef POLLINGI2C
+#include "I2C.h"
+#else
+#include <Wire.h>
+#endif
+#include "oxs_ms5611.h"
+
+#ifdef DEBUG  
+OXS_MS5611::OXS_MS5611(uint8_t addr, HardwareSerial &print, uint16_t kalman_r)
+#else
+OXS_MS5611::OXS_MS5611(uint8_t addr, uint16_t kalman_r)
+#endif
+{
   // constructor
   _addr=addr;
   varioData.paramKalman_r=kalman_r;  // sensor noise
@@ -20,22 +34,34 @@ float metersPerMbar=0;
 void OXS_MS5611::setup()
 {
   varioData.available=false;
+#ifdef POLLINGI2C
+  I2c.begin() ;
+  I2c.write( _addr,0x1e) ;
+#else
   Wire.begin();
   SendCommand(0x1e);
+#endif
   delay(100);
   for (byte i = 1; i <=6; i++)
   {
     unsigned int low, high;
+#ifdef POLLINGI2C
+  	I2c.read( _addr, 0xa0 + i*2, 2 ) ; //read 2 bytes from the device
+	  high = I2c.receive() ;
+	  low = I2c.receive() ;
+#else		
     SendCommand(0xa0 + i * 2);
     Wire.beginTransmission(_addr);  
     Wire.requestFrom((uint8_t)_addr, (uint8_t)2);
     if(Wire.available()!=2) {
-#ifdef DEBUG
+ #ifdef DEBUG
       printer->println("Error: calibration data not available");
-#endif
+ #endif
     }
     high = Wire.read();
     low = Wire.read();
+#endif
+
     _calibrationData[i] = high<<8 | low;
 #ifdef DEBUG
     printer->print("calibration data #");
@@ -70,6 +96,7 @@ void OXS_MS5611::setup()
 /* SendCommand - Send a command to the I2C Bus               */
 /****************************************************************/
 /* Send a command to the MS5611 */
+#ifndef POLLINGI2C
 void OXS_MS5611::SendCommand(byte command)
 {
   Wire.beginTransmission(_addr);
@@ -87,6 +114,7 @@ void OXS_MS5611::SendCommand(byte command)
 #endif
   }
 }
+#endif
 
 /****************************************************************/
 /* readSensor - Read pressure + temperature from the MS5611    */
@@ -102,14 +130,29 @@ void OXS_MS5611::readSensor()
 {
   if (SensorState==0) // ========================== Request Pressure
   {
+#ifdef POLLINGI2C
+	  I2c.write( _addr,0x48) ;
+#else
     SendCommand(0x48);
-    lastmicros=micros();    
+#endif
+    lastmicros=micros() ;
+
     SensorState+=1;
   }
   else if (SensorState==1) // ========================== get Pressure value
   {
-    if (micros()-lastmicros>=9000){
+    if (micros()>lastmicros+9000){
       long result = 0;
+#ifdef POLLINGI2C
+  		I2c.read( _addr, 0, 3 ) ; //read 3 bytes from the device
+			result = I2c.receive() ;
+			result <<= 16 ;
+			uint16_t temp ;
+			temp = I2c.receive() ;
+			temp <<= 8 ;
+			temp |= I2c.receive() ;
+			result |= temp ;
+#else
       SendCommand(0x00);
       Wire.beginTransmission(_addr);  
       Wire.requestFrom(_addr,(uint8_t) 3);
@@ -117,16 +160,31 @@ void OXS_MS5611::readSensor()
       if(Wire.available()!=3)printer->println("Error: raw data not available");
 #endif
       for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
+#endif	// POLLINGI2C
       D1=result;
+#ifdef POLLINGI2C
+		  I2c.write( _addr,0x50) ;
+#else
       SendCommand(0x50); // request Temperature
-      lastmicros=micros(); 
+#endif
+    	lastmicros=micros() ;
       SensorState+=1;
     }   
   }
   else if (SensorState==2) // =========================  Get Temperature Value
   {
-    if (micros()-lastmicros>=1000){
+    if (micros()>lastmicros+2000){
       long result = 0;
+#ifdef POLLINGI2C
+  		I2c.read( _addr, 0, 3 ) ; //read 3 bytes from the device
+			result = I2c.receive() ;
+			result <<= 16 ;
+			uint16_t temp ;
+			temp = I2c.receive() ;
+			temp <<= 8 ;
+			temp |= I2c.receive() ;
+			result |= temp ;
+#else
       SendCommand(0x00);
       Wire.beginTransmission(_addr);  
       Wire.requestFrom(_addr,(uint8_t) 3);
@@ -134,6 +192,7 @@ void OXS_MS5611::readSensor()
       if(Wire.available()!=3)printer->println("Error: raw data not available");
 #endif
       for (int i = 0; i <= 2; i++)    result = (result<<8) | Wire.read(); 
+#endif
       D2=result;
       lastmicros=micros(); 
       // Do Conversion
