@@ -48,15 +48,15 @@ void OXS_OUT_FRSKY::setup()
 
 void OXS_OUT_FRSKY::sendData()
 {
-	static uint8_t counter ;
+  static uint8_t counter ;
   switch ( counter)
-	{
+  {
     case 0 :  
-			setNewData( &MyData[1], VARIO_ID, varioData->climbRate ) ;
+      setNewData( &MyData[1], VARIO_ID, varioData->climbRate ) ;
       break;
      
     case 1 :
-			setNewData( &MyData[0], ALT_ID, varioData->absoluteAlt ) ;
+      setNewData( &MyData[0], ALT_ID, varioData->absoluteAlt ) ;
       break;
   }
   counter = (counter + 1) & 1 ;
