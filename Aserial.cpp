@@ -208,6 +208,8 @@ ISR(PCINT2_vect)
  *
  */
 
+uint8_t ByteStuffByte = 0 ;
+
 ISR(TIMER1_COMPA_vect)
 {
   switch (state)
@@ -245,18 +247,31 @@ ISR(TIMER1_COMPA_vect)
   // Go to idle after stop bit was sent.
   case TRANSMIT_STOP_BIT:
 #ifdef FRSKY_SPORT
-		if ( ++TxCount < 8 )		// Have we sent 8 bytes?
+		if ( ByteStuffByte || (++TxCount < 8) )		// Have we sent 8 bytes?
 		{
-			if ( TxCount < 7 )		// Data (or crc)?
+			if ( ByteStuffByte )
 			{
-				SwUartTXData = TxData[TxCount] ;
-			  Crc += SwUartTXData ; //0-1FF
-			  Crc += Crc >> 8 ; //0-100
-			  Crc &= 0x00ff ;
+				SwUartTXData = ByteStuffByte ;
+				ByteStuffByte = 0 ;
 			}
 			else
 			{
-				SwUartTXData = 0xFF-Crc ;
+				if ( TxCount < 7 )		// Data (or crc)?
+				{
+					SwUartTXData = TxData[TxCount] ;
+				  Crc += SwUartTXData ; //0-1FF
+				  Crc += Crc >> 8 ; //0-100
+				  Crc &= 0x00ff ;
+				}
+				else
+				{
+					SwUartTXData = 0xFF-Crc ;
+				}
+				if ( ( SwUartTXData == 0x7E ) || ( SwUartTXData == 0x7D ) )
+				{
+					ByteStuffByte = SwUartTXData ^ 0x20 ;
+					SwUartTXData = 0x7D ;					
+				}
 			}
       SET_TX_PIN() ;                // Send a logic 0 on the TX_PIN.
 	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
@@ -464,11 +479,6 @@ void initSportUart( struct t_sportData *pdata )
   TRXDDR &= ~( 1 << PIN_SerialTX ) ;       // PIN is input, tri-stated.
   TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is input, tri-stated.
 
-  // Timer1
-  TIMSK1 &= ~( 1<< OCIE1A ) ;
-  TCCR1A = 0x00 ;    //Init.
-  TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
-
   // External interrupt
 
 #if PIN_SerialTX == 4
@@ -498,11 +508,6 @@ void initHubUart()
   TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is low
   TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output.
 	
-  // Timer1
-  TIMSK1 &= ~( 1<< OCIE1A ) ;
-  TCCR1A = 0x00 ;    //Init.
-  TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
-
   //Internal State Variable
   state = IDLE ;
 
@@ -514,4 +519,223 @@ void initHubUart()
 
 #endif // FRSKY_SPORT
 
+uint16_t MillisPrecount ;
+uint16_t lastTimerValue ;
+uint32_t TotalMicros ;
+uint32_t TotalMillis ;
+
+uint32_t lastEventTime ;
+uint8_t RpmCounter ;
+uint8_t RpmSet ;
+uint16_t Rpm = 60 ;
+
+// RPM code
+#ifdef MEASURE_RPM
+ISR( TIMER1_CAPT_vect, ISR_NOBLOCK )
+{
+	uint16_t elapsed ;
+	uint32_t eventTime ;
+	uint32_t difference ;
+
+	if ( ++RpmCounter > 3 )
+	{
+		cli() ;
+		uint16_t time = ICR1 ;	// Read timer 1
+		sei() ;
+		elapsed = time - lastTimerValue ;
+		eventTime = TotalMicros + ( elapsed >> 4 ) ;
+		RpmCounter = 0 ;
+		difference = eventTime - lastEventTime ;
+		lastEventTime = eventTime ;
+		if ( difference > 400 )
+		{
+			Rpm = 4000000 / difference ;
+		}
+		else
+		{
+			Rpm = 0 ;
+		}
+		RpmSet = 1 ;
+	}
+}
+
+#endif // MEASURE_RPM
+
+uint32_t micros()
+{
+	uint16_t elapsed ;
+	uint8_t millisToAdd ;
+	uint8_t oldSREG = SREG ;
+	cli() ;
+	uint16_t time = TCNT1 ;	// Read timer 1
+	SREG = oldSREG ;
+
+	elapsed = time - lastTimerValue ;
+	elapsed >>= 4 ;
+	
+	uint32_t ltime = TotalMicros ;
+	ltime += elapsed ;
+	cli() ;
+	TotalMicros = ltime ;	// Done this way for RPM to work correctly
+	lastTimerValue = time ;
+	SREG = oldSREG ;	// Still valid from above
+	
+	elapsed += MillisPrecount;
+	millisToAdd = 0 ;
+	if ( elapsed  > 3999 )
+	{
+		millisToAdd = 4 ;
+		elapsed -= 4000 ;
+	}
+	else if ( elapsed  > 2999 )
+	{
+		millisToAdd = 3 ;		
+		elapsed -= 3000 ;
+	}
+	else if ( elapsed  > 1999 )
+	{
+		millisToAdd = 2 ;
+		elapsed -= 2000 ;
+	}
+	else if ( elapsed  > 999 )
+	{
+		millisToAdd = 1 ;
+		elapsed -= 1000 ;
+	}
+	TotalMillis += millisToAdd ;
+	MillisPrecount = elapsed ;
+	return TotalMicros ;
+}
+
+uint32_t millis()
+{
+	micros() ;
+	return TotalMillis ;
+}
+
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+void init()
+{
+  // Timer1
+	TIMSK1 &= ~( 1<< OCIE1A ) ;
+  TCCR1A = 0x00 ;    //Init.
+  TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
+
+#if defined(ADCSRA)
+	// set a2d prescale factor to 128
+	// 16 MHz / 128 = 125 KHz, inside the desired 50-200 KHz range.
+	// XXX: this will not work properly for other clock speeds, and
+	// this code should use F_CPU to determine the prescale factor.
+	sbi(ADCSRA, ADPS2);
+	sbi(ADCSRA, ADPS1);
+	sbi(ADCSRA, ADPS0);
+
+	// enable a2d conversions
+	sbi(ADCSRA, ADEN);
+#endif
+
+	// the bootloader connects pins 0 and 1 to the USART; disconnect them
+	// here so they can be used as normal digital i/o; they will be
+	// reconnected in Serial.begin()
+#if defined(UCSRB)
+	UCSRB = 0;
+#elif defined(UCSR0B)
+	UCSR0B = 0;
+#endif
+
+#ifdef MEASURE_RPM
+	DDRB &= ~0x01 ;	// Pin is input
+	PORTB |= 1 ; 		// With pullup
+	sbi( TIMSK1, ICIE1 ) ;
+#endif // MEASURE_RPM
+	sei();
+
+}
+
+void delay(unsigned long ms)
+{
+	uint16_t start = (uint16_t)micros();
+	uint16_t lms = ms ;
+
+	while (lms > 0) {
+		if (((uint16_t)micros() - start) >= 1000) {
+			lms--;
+			start += 1000;
+		}
+	}
+}
+ 
+// Delay for the given number of microseconds.  Assumes a 8 or 16 MHz clock. 
+void delayMicroseconds(unsigned int us)
+{
+//	 calling avrlib's delay_us() function with low values (e.g. 1 or
+//	 2 microseconds) gives delays longer than desired.
+//	delay_us(us);
+#if F_CPU >= 20000000L
+//	 for the 20 MHz clock on rare Arduino boards
+
+//	 for a one-microsecond delay, simply wait 2 cycle and return. The overhead
+//	 of the function call yields a delay of exactly a one microsecond.
+	__asm__ __volatile__ (
+		"nop" "\n\t"
+		"nop"); //just waiting 2 cycle
+	if (--us == 0)
+		return;
+
+//	 the following loop takes a 1/5 of a microsecond (4 cycles)
+//	 per iteration, so execute it five times for each microsecond of
+//	 delay requested.
+	us = (us<<2) + us; // x5 us
+
+//	 account for the time taken in the preceeding commands.
+	us -= 2;
+
+#elif F_CPU >= 16000000L
+//	 for the 16 MHz clock on most Arduino boards
+
+//	 for a one-microsecond delay, simply return.  the overhead
+//	 of the function call yields a delay of approximately 1 1/8 us.
+	if (--us == 0)
+		return;
+
+//	 the following loop takes a quarter of a microsecond (4 cycles)
+//	 per iteration, so execute it four times for each microsecond of
+//	 delay requested.
+	us <<= 2;
+
+//	 account for the time taken in the preceeding commands.
+	us -= 2;
+#else
+//	 for the 8 MHz internal clock on the ATmega168
+
+//	 for a one- or two-microsecond delay, simply return.  the overhead of
+//	 the function calls takes more than two microseconds.  can't just
+//	 subtract two, since us is unsigned; we'd overflow.
+	if (--us == 0)
+		return;
+	if (--us == 0)
+		return;
+
+//	 the following loop takes half of a microsecond (4 cycles)
+//	 per iteration, so execute it twice for each microsecond of
+//	 delay requested.
+	us <<= 1;
+    
+//	 partially compensate for the time taken by the preceeding commands.
+//	 we can't subtract any more than this or we'd overflow w/ small delays.
+	us--;
+#endif
+
+//	 busy wait
+	__asm__ __volatile__ (
+		"1: sbiw %0,1" "\n\t" // 2 cycles
+		"brne 1b" : "=w" (us) : "0" (us) // 2 cycles
+	);
+}
 

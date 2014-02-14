@@ -1,11 +1,22 @@
 #include "Arduino.h"
 #include "oxs_arduino.h"
-#include "HardwareSerial.h"
 #include "oxs_config.h"
 
+extern unsigned long micros( void ) ;
+extern unsigned long millis( void ) ;
+
+
+#ifdef DEBUG  
 OXS_ARDUINO::OXS_ARDUINO(HardwareSerial &print) 
+#else
+OXS_ARDUINO::OXS_ARDUINO(uint8_t x) 
+#endif
 {
+#ifdef DEBUG  
   printer = &print; //operate on the address of print   
+#endif
+	vrefSum = 0 ;
+	ArduinoSum = 0 ;
 }
 
 // **************** Setup the Current sensor *********************
@@ -55,9 +66,10 @@ void OXS_ARDUINO::prefillBuffer()
 
 void OXS_ARDUINO::readSensor()
 {
-  static uint32_t lastMs=millis();
-  arduinoData.loopTimeMilliSeconds=millis()-lastMs;
-  lastMs=millis();
+  static uint16_t lastMs=millis();
+	uint16_t temp = millis() ;
+  arduinoData.loopTimeMilliSeconds=temp-lastMs;
+  lastMs=temp;
   SaveVRef((uint16_t)readVccMv());
   if (_pinDivider >=0)
   {
@@ -130,26 +142,25 @@ uint16_t OXS_ARDUINO::readVccMv() {
 void OXS_ARDUINO::SaveVRef(uint16_t value)
 {
   static byte cnt =0;
-  static uint32_t sum=0;
-  sum+=value;
+//  static uint32_t sum=0;
+  vrefSum+=value;
   cnt++;
-  if(cnt==VREF_BUFFER_LENGTH){
-    arduinoData.vrefMilliVolts=sum/VREF_BUFFER_LENGTH;
+  if(cnt>=VREF_BUFFER_LENGTH){
+    arduinoData.vrefMilliVolts=vrefSum/VREF_BUFFER_LENGTH;
     if(arduinoData.minVrefMilliVolts>arduinoData.vrefMilliVolts)arduinoData.minVrefMilliVolts=arduinoData.vrefMilliVolts;
     if(arduinoData.maxVrefMilliVolts<arduinoData.vrefMilliVolts)arduinoData.maxVrefMilliVolts=arduinoData.vrefMilliVolts;
-    sum=0;
+    vrefSum=0;
     cnt=0;
   }
 }
 void OXS_ARDUINO::SaveDividerVoltage(uint16_t value)
 {
   static byte cnt =0;
-  static uint32_t sum=0;
-  sum+=value;
+  ArduinoSum+=value;
 
   cnt++;
   if(cnt==DIVIDER_BUFFER_LENGTH){
-    arduinoData.dividerMilliVolts=sum/DIVIDER_BUFFER_LENGTH ;
+    arduinoData.dividerMilliVolts=ArduinoSum/DIVIDER_BUFFER_LENGTH ;
 
 #ifdef VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV
     if ((int32_t)arduinoData.dividerMilliVolts >(int32_t)VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV)arduinoData.dividerMilliVolts+=VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV;
@@ -158,8 +169,8 @@ void OXS_ARDUINO::SaveDividerVoltage(uint16_t value)
     if(arduinoData.minDividerMilliVolts>arduinoData.dividerMilliVolts)arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts;
     if(arduinoData.maxDividerMilliVolts<arduinoData.dividerMilliVolts)arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts; 
     cnt=0;
-    sum=0;
-    cnt=0;
+    ArduinoSum=0;
+//    cnt=0;
   }
 }
 

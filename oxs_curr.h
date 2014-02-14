@@ -20,18 +20,27 @@ struct CURRENTDATA {
 
 class OXS_CURRENT {
 public:
+#ifdef DEBUG  
   OXS_CURRENT(uint8_t pinCurrent, HardwareSerial &print);
+#else
+	OXS_CURRENT(uint8_t pinCurrent) ;
+#endif
   CURRENTDATA currentData ;
-  void setupMinMaxA( int32_t MilliAmps0V,int32_t MilliAmps5V);
+//  void setupMinMaxA( int32_t MilliAmps0V,int32_t MilliAmps5V);
   void setupIdleMvA( uint16_t idleMilliVolts,int16_t milliVoltPerAmpere);
   void readSensor(uint16_t vRef);
   void resetValues();
 
 private:
+#ifdef DEBUG  
   HardwareSerial* printer;
+#endif
   byte _pinCurrent;
+#ifdef DEBUG
   void debugSendSetup();
+#endif
 
+  long CurrentSum ;
   unsigned long _microsLastCurrent;
   void SaveCurrent(long current);
   long getAverageCurrent();
