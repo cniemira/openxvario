@@ -60,10 +60,6 @@ struct t_sportData *ThisData = 0 ;
 //#define	DISABLE_TWI_INT()							( TWCR &= ~(1<<TWINT) )
 //#define	ENABLE_TWI_INT()							( TWCR |= (1<<TWINT) )
 
-
-  
-#define TX_PIN           4  	              //!< Transmit data pin
-#define RX_PIN           4	                //!< Receive data pin
 #define TCCR             TCCR1A             //!< Timer/Counter Control Register
 #define TCCR_P           TCCR1B             //!< Timer/Counter Control (Prescaler) Register
 #define OCR              OCR1A              //!< Output Compare Register
@@ -71,14 +67,13 @@ struct t_sportData *ThisData = 0 ;
 #define EXT_ICR          EICRA              //!< External Interrupt Control Register
 //  #define TIMER_COMP_VECT  TIMER1_COMPA_vect  //!< Timer Compare Interrupt Vector
 
-
 #define TRXDDR  DDRD
 #define TRXPORT PORTD
 #define TRXPIN  PIND
 
-#define SET_TX_PIN( )    ( TRXPORT |= ( 1 << TX_PIN ) )
-#define CLEAR_TX_PIN( )  ( TRXPORT &= ~( 1 << TX_PIN ) )
-#define GET_RX_PIN( )    ( TRXPIN & ( 1 << RX_PIN ) )
+#define SET_TX_PIN( )    ( TRXPORT |= ( 1 << PIN_SerialTX ) )
+#define CLEAR_TX_PIN( )  ( TRXPORT &= ~( 1 << PIN_SerialTX ) )
+#define GET_RX_PIN( )    ( TRXPIN & ( 1 << PIN_SerialTX ) )
 
 #ifdef FRSKY_SPORT
  #ifndef SENSOR_ID
@@ -181,7 +176,7 @@ void sendHubByte( uint8_t byte )
 #ifdef FRSKY_SPORT
 ISR(PCINT2_vect)
 {
-	if ( TRXPIN & ( 1 << RX_PIN ) )			// Pin is high = start bit (inverted)
+	if ( TRXPIN & ( 1 << PIN_SerialTX ) )			// Pin is high = start bit (inverted)
 	{
 		PCICR &= ~(1<<PCIE2) ;						// pin change interrupt disabled
 //PORTC &= ~2 ;
@@ -273,8 +268,8 @@ ISR(TIMER1_COMPA_vect)
 		{
 			state = WAITING ;
 			OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
-			TRXDDR &= ~( 1 << RX_PIN );   // PIN is input, tri-stated.
-		  TRXPORT &= ~( 1 << RX_PIN );  // PIN is input, tri-stated.
+			TRXDDR &= ~( 1 << PIN_SerialTX );   // PIN is input, tri-stated.
+		  TRXPORT &= ~( 1 << PIN_SerialTX );  // PIN is input, tri-stated.
 
 			struct t_sportData *pdata = ThisData ;
 			FORCE_INDIRECT( pdata ) ;
@@ -403,7 +398,7 @@ ISR(TIMER1_COMPA_vect)
 #if DEBUG
 	PORTC |= 1 ;
 #endif
-			TRXDDR |= ( 1 << RX_PIN ) ;       // PIN is output
+			TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output
       SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
 	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
 		  SwUartTXBitCount = 0 ;
@@ -463,28 +458,36 @@ ISR(TIMER1_COMPA_vect)
 #ifdef FRSKY_SPORT
 void initSportUart( struct t_sportData *pdata )
 {
-	FirstData = ThisData = pdata ;
-  //PORT
-	TRXDDR &= ~( 1 << RX_PIN ) ;       // PIN is input, tri-stated.
-  TRXPORT &= ~( 1 << RX_PIN ) ;      // PIN is input, tri-stated.
+  FirstData = ThisData = pdata ;
+
+  // PORT
+  TRXDDR &= ~( 1 << PIN_SerialTX ) ;       // PIN is input, tri-stated.
+  TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is input, tri-stated.
 
   // Timer1
-	TIMSK1 &= ~( 1<< OCIE1A ) ;
+  TIMSK1 &= ~( 1<< OCIE1A ) ;
   TCCR1A = 0x00 ;    //Init.
   TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
 
-  //External interrupt
+  // External interrupt
 
-	PCMSK2 |= 0x10 ;			// IO4 (PD4) on Arduini mini
-	PCIFR = (1<<PCIF2) ;	// clear pending interrupt
-	PCICR |= (1<<PCIE2) ;	// pin change interrupt enabled
+#if PIN_SerialTX == 4
+  PCMSK2 |= 0x10 ;  // IO4 (PD4) on Arduini mini
+#elif PIN_SerialTX == 2
+  PCMSK2 |= 0x04 ;  // IO2 (PD2) on Arduini mini
+#else
+  #error "This PIN is not supported"
+#endif
 
-  //Internal State Variable
+  PCIFR = (1<<PCIF2) ;	// clear pending interrupt
+  PCICR |= (1<<PCIE2) ;	// pin change interrupt enabled
+
+  // Internal State Variable
   state = IDLE ;
 
 #if DEBUG
-	DDRC = 0x03 ;		// PC0,1 as o/p debug
-	PORTC = 0 ;
+  DDRC = 0x03 ;		// PC0,1 as o/p debug
+  PORTC = 0 ;
 #endif
 }
 
@@ -492,11 +495,11 @@ void initSportUart( struct t_sportData *pdata )
 
 void initHubUart()
 {
-  TRXPORT &= ~( 1 << TX_PIN ) ;      // PIN is low
-	TRXDDR |= ( 1 << TX_PIN ) ;       // PIN is output.
+  TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is low
+  TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output.
 	
   // Timer1
-	TIMSK1 &= ~( 1<< OCIE1A ) ;
+  TIMSK1 &= ~( 1<< OCIE1A ) ;
   TCCR1A = 0x00 ;    //Init.
   TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
 
@@ -504,8 +507,8 @@ void initHubUart()
   state = IDLE ;
 
 #if DEBUG
-	DDRC = 0x03 ;		// PC0,1 as o/p debug
-	PORTC = 0 ;
+  DDRC = 0x03 ;		// PC0,1 as o/p debug
+  PORTC = 0 ;
 #endif
 }
 
