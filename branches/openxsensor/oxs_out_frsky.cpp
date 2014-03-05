@@ -167,7 +167,7 @@ void OXS_OUT_FRSKY::SendFrame1A(){
     }// if (varioData->available){ 
   } //(varioData==NULL)
   if (currentData!=NULL){
-    if (varioData->available){ //========================================================================== Current Data
+    if (currentData->available){ //========================================================================== Current Data
 #ifdef DEBUG
       printer->print("Sending current data:");      
       printer->println(currentData->milliAmps);
@@ -263,7 +263,7 @@ void OXS_OUT_FRSKY::SendFrame1B(){
     }// if (varioData->available){ 
   } //(varioData==NULL)
   if (currentData!=NULL){
-    if (varioData->available){ //========================================================================== Current Data
+    if (currentData->available){ //========================================================================== Current Data
 #ifdef SEND_mAhAsDist
       SendGPSDist(uint16_t(currentData->consumedMilliAmps));
 #endif

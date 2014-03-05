@@ -120,7 +120,9 @@ void loop(){
   static unsigned long LastOutputMs=millis();
   loopcnt+=1;
   
-//  readSensors();
+#ifndef FRSKY_SPORT
+  readSensors();
+#endif
 //extern uint32_t newMillis( void ) ;
 //	millis() ;
   
