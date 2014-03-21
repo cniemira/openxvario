@@ -7,6 +7,7 @@
 #include "oxs_curr.h" // we need the currentdata struct
 #include "oxs_arduino.h" // we need the arduinodata struct
 
+
 #define INTERVAL_FRAME1 100
 #define INTERVAL_FRAME2 1000
 
@@ -42,10 +43,25 @@
 #define FRSKY_USERDATA_CURRENT      0x28
 
 #define FRSKY_USERDATA_VERT_SPEED   0x30 // open9x Vario Mode Only
+#define FRSKY_USERDATA_CURRENT_MAX  0x38
 #define FRSKY_USERDATA_VFAS_NEW     0x39 // open9x Vario Mode Only
 
 #define FRSKY_USERDATA_VOLTAGE_B    0x3A
 #define FRSKY_USERDATA_VOLTAGE_A    0x3B
+#define FRSKY_USERDATA_GPS_DIST     0x3C
+
+  
+ 
+#define UNKNOWN false
+#define KNOWN true
+
+/***************************************************************************************/
+/* Transmission status                                                                 */ 
+/***************************************************************************************/
+#define TO_LOAD     0
+#define LOADED      1
+#define SENDING     2
+#define SEND        3
 
 
 class OXS_OUT_FRSKY {
@@ -58,21 +74,24 @@ class OXS_OUT_FRSKY {
     VARIODATA* varioData ;
     CURRENTDATA* currentData ;
     ARDUINODATA* arduinoData ;
+    uint8_t currentValueType ; //e.g. = ALTIMETER, VERTICAL_SPEED, = field_Id to transmit  
     void setup();
-    
-
     void sendData();
     
   private:
+    uint8_t readStatusValue( uint8_t currentValueType) ;
+    void loadValueToSend(  uint8_t ValueTypeToLoad) ;
+    uint8_t nextFieldToSend(  uint8_t currentFieldToSend) ;
     uint8_t _pinTx;
 #ifdef DEBUG  
     HardwareSerial* printer;
 #endif
-    void SendFrame1A();
-    void SendFrame1B();
-    void SendFrame2();
+//    void SendFrame1A();
+//    void SendFrame1B();
+//    void SendFrame2();
+    void SendFrame1();
     void SendValue(uint8_t ID, uint16_t Value);
-    void SendCellVoltage(uint8_t cellID, uint16_t voltage);
+    void SendCellVoltage(uint32_t voltage);
     void SendGPSDist(uint16_t dist);
     void SendTemperature1(int16_t tempc);
     void SendTemperature2(int16_t tempc);
@@ -83,9 +102,15 @@ class OXS_OUT_FRSKY {
     void SendFuel(uint16_t fuel);
     void SendCurrentMilliAmps(int32_t milliamps);
     
+    void sendHubByte( uint8_t byte ) ;
+    void SendVoltX( uint8_t VoltToSend  ) ;
+
 };
 
+extern bool RpmAvailable ;
+
 #endif // OXS_OUT_FRSKY_h
+
 
 
 

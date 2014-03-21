@@ -27,13 +27,31 @@ void initSportUart( struct t_sportData *pdata ) ;
 extern uint8_t DataSent ;
 extern uint8_t SportSync ;
 
-#else // FRSKY_SPORT
 
-void initHubUart( void ) ;
-void sendHubByte( uint8_t byte ) ;
+extern volatile uint8_t sendStatus ;
+
+#else // Hub protocol
+
+struct t_hubData
+{
+	uint8_t data[30] ; 
+	uint8_t currentData ; //index of current data
+	uint8_t maxData ;   // max number of data prepared to be send
+} ;
+
+void initHubUart( struct t_hubData *pdata ) ;
+//void sendHubByte( uint8_t byte ) ;
+void setNewData( struct t_hubData *pdata ) ;
+void startTransmit( void ) ;
 
 #endif // FRSKY_SPORT
 
+ 
+extern volatile bool RpmSet ;
+extern volatile uint16_t Rpm ;
+
+
 unsigned long micros( void ) ;
 unsigned long millis( void ) ;
+
 
