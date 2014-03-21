@@ -1,12 +1,18 @@
 #include "Arduino.h"
 #include "oxs_arduino.h"
-#include "oxs_config.h"
+//#include "HardwareSerial.h"
+//#include "oxs_config.h" // already in .h file
+ 
+//#define DEBUGNEWVALUE
+//#define DEBUGDELAY
+//#define DEBUGCELLCALCULATION
 
 extern unsigned long micros( void ) ;
 extern unsigned long millis( void ) ;
+extern void delay(unsigned long ms) ;
 
 
-#ifdef DEBUG  
+#ifdef DEBUG
 OXS_ARDUINO::OXS_ARDUINO(HardwareSerial &print) 
 #else
 OXS_ARDUINO::OXS_ARDUINO(uint8_t x) 
@@ -15,169 +21,188 @@ OXS_ARDUINO::OXS_ARDUINO(uint8_t x)
 #ifdef DEBUG  
   printer = &print; //operate on the address of print   
 #endif
-	vrefSum = 0 ;
-	ArduinoSum = 0 ;
 }
 
 // **************** Setup the Current sensor *********************
-void OXS_ARDUINO::setupDivider( int16_t DividerAnalogPin, uint32_t ohmToGnd,uint32_t OhmToBat )
-{
-  if (DividerAnalogPin >=0)
-  {
-    _pinDivider=DividerAnalogPin;
-    _resistorFactor = (float)ohmToGnd/((float)OhmToBat + (float)ohmToGnd);
-#ifdef DEBUG
-    printer->print("Divider ohmToGnd=");
-    printer->println( ohmToGnd);
-    printer->print("Divider OhmToBat=");
-    printer->println( OhmToBat);
-    printer->print("Divider _resistorFactor=");
-    printer->println( _resistorFactor);
-    printer->print("Divider _Multiplicator=");
-    printer->println(1/ _resistorFactor);
-    printer->print("Maximum allowed Voltage allowed on Voltage Divider=");
-    printer->println(5/ _resistorFactor);
-#endif
-  }
-  prefillBuffer();
-  readSensor();
-  resetValues();
-}
-void OXS_ARDUINO::prefillBuffer()
-{
-  // Prefill buffers.
-#ifdef DEBUG
-  printer->print("Prefilling arduino buffers...");
-#endif
-  for (int i=0;i<VREF_BUFFER_LENGTH*2;i++){
-     readSensor();
-  }
-#ifdef DEBUG
-  printer->println("done.");
-#endif
-  resetValues();
+void OXS_ARDUINO::setupDivider( void ) {
+#ifdef USE_INTERNAL_REFERENCE   
+  analogReference(INTERNAL) ;
+#endif  
+  arduinoData.mVoltPin[0] = PIN_Voltage1 ;
+  arduinoData.offset[0] = offset_1 ;
+  arduinoData.mVoltPerStep[0] = mVoltPerStep_1 ;
 
-}
-// R2= Resistor from analog pin to GND
-// R1= Resistor from analog pin to to voltage to be measured
-// Val= Measured Voltage on Analog Pin
-// Voltage=Val/(R2/(R1+R2)
-// Maximum voltage that is allowed (theoretical) on the voltage divider is 5/R1/(R+R2);
+  arduinoData.mVoltPin[1] = PIN_Voltage2 ;
+  arduinoData.offset[1] = offset_2 ;
+  arduinoData.mVoltPerStep[1] = mVoltPerStep_2 ;
+  
+  arduinoData.mVoltPin[2] = PIN_Voltage3 ;
+  arduinoData.offset[2] = offset_3 ;
+  arduinoData.mVoltPerStep[2] = mVoltPerStep_3 ;
 
-void OXS_ARDUINO::readSensor()
-{
-  static uint16_t lastMs=millis();
-	uint16_t temp = millis() ;
-  arduinoData.loopTimeMilliSeconds=temp-lastMs;
-  lastMs=temp;
-  SaveVRef((uint16_t)readVccMv());
-  if (_pinDivider >=0)
-  {
-    int val = analogRead(_pinDivider); // read the value from the sensor
-    SaveDividerVoltage(((float)val *((float)arduinoData.vrefMilliVolts/(float)1024)/(float)_resistorFactor));
+  arduinoData.mVoltPin[3] = PIN_Voltage4 ;
+  arduinoData.offset[3] = offset_4 ;
+  arduinoData.mVoltPerStep[3] = mVoltPerStep_4 ;
+
+  arduinoData.mVoltPin[4] = PIN_Voltage5 ;
+  arduinoData.offset[4] = offset_5 ;
+  arduinoData.mVoltPerStep[4] = mVoltPerStep_5 ;
+
+  arduinoData.mVoltPin[5] = PIN_Voltage6 ;
+  arduinoData.offset[5] = offset_6 ;
+  arduinoData.mVoltPerStep[5] = mVoltPerStep_6 ;
+
+  for (int cntInit = 0 ; cntInit < 6 ; cntInit++) {
+    pinMode(arduinoData.mVoltPin[cntInit],INPUT);
+    arduinoData.sumVoltage[cntInit] = 0 ;
+    arduinoData.mVoltAvailable[cntInit] = false ; 
   }
-  arduinoData.available=true;
+  arduinoData.atLeastOneVoltage = ( arduinoData.mVoltPin[0] < 7 || arduinoData.mVoltPin[1] < 7 || arduinoData.mVoltPin[2] < 7 ||arduinoData.mVoltPin[3] < 7 ||arduinoData.mVoltPin[4] < 7 || arduinoData.mVoltPin[5] < 7 ) ;
 }
 
-void OXS_ARDUINO::resetValues()
-{
-  arduinoData.maxVrefMilliVolts=arduinoData.vrefMilliVolts;
-  arduinoData.minVrefMilliVolts=arduinoData.vrefMilliVolts;       // in mV
-  arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts; // in mV
-  arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts;  // in mV
+// Maximum voltage that is allowed (theoretical) on the voltage divider is 5/R2/(R1+R2);
+
+  static byte voltageNr = 0;
+
+void OXS_ARDUINO::readSensor() {
+// here we should test if Current sensor is used too; otherwise, it is not necessary to use the 2 next instructions
+
+#ifdef DEBUGDELAY
+        long milliVoltBegin = millis() ;
+#endif
+
+    while ( arduinoData.mVoltPin[voltageNr] > 7) { // Skip nr if voltageNr have not a pin defined between 0 and 7
+        voltageNrIncrease();
+    }  
+    arduinoData.sumVoltage[voltageNr] += readVoltage(voltageNr) ;
+#ifdef DEBUGDELAY
+        printer->print("readVoltage voltageNr =  ");
+        printer->print(voltageNr);
+        printer->print(" begin at =  ");
+        printer->print(milliVoltBegin);
+        printer->print(" end at =  ");
+        printer->println(millis());
+#endif
+
+    voltageNrIncrease();
+
+}      
+
+
+
+// Select next voltage to read ; if more than X voltage have been read, calculates the averages for each voltage 
+void OXS_ARDUINO::voltageNrIncrease() {
+  static int cnt = 0;
+  static unsigned long lastVoltMillis = millis() ;
+  static int32_t secondMVolt ;
+  static int32_t previousMVolt ;  
+  
+  voltageNr++;
+  if(voltageNr == 6) { 
+      voltageNr = 0 ;
+      cnt++;
+      if(millis() > ( lastVoltMillis + 500) ){   // calculate average only once every 500 msec 
+        for (int cntVolt = 0 ; cntVolt < 6 ; cntVolt++) {      
+          if ( arduinoData.mVoltPin[cntVolt] < 7) {
+            arduinoData.mVolt[cntVolt] = (arduinoData.sumVoltage[cntVolt] / cnt  * arduinoData.mVoltPerStep[cntVolt] ) + arduinoData.offset[cntVolt];
+//            arduinoData.mVolt[cntVolt] = (1 + cntVolt) * 3000 + cntVolt * (millis() & 0xFF)  ; // this is just to test the cell calculation ; !!!!!!!!!!!to be removed
+            arduinoData.mVoltAvailable[cntVolt] = true ;
+            arduinoData.sumVoltage[cntVolt] = 0 ;
+#ifdef DEBUGNEWVALUE
+            printer->print("At ");
+            printer->print(millis());
+            printer->print(" Cnt = ");
+            printer->print(cnt);
+            printer->print(" mVolt ");
+            printer->print(cntVolt);
+            printer->print(" = ");
+            printer->println( arduinoData.mVolt[cntVolt] );
+#endif
+          } // if
+        } // End For   
+#if (NUMBEROFCELLS > 0)
+        if (NUMBEROFCELLS == 1) {
+          secondMVolt = 0 ; 
+        }
+        else { 
+          secondMVolt = arduinoData.mVolt[1]; 
+        }
+        arduinoData.mVoltCell_1_2 = calculateCell(0, arduinoData.mVolt[0] , secondMVolt , 0) ;
+        arduinoData.mVoltCell_1_2_Available = true ;   
+        if (NUMBEROFCELLS > 2) {
+            if (NUMBEROFCELLS == 3) {
+              secondMVolt = 0 ; 
+            }
+            else { 
+              secondMVolt = arduinoData.mVolt[3] ;
+            }  
+            arduinoData.mVoltCell_3_4 = calculateCell(arduinoData.mVolt[1] , arduinoData.mVolt[2] , secondMVolt , 2) ;
+            arduinoData.mVoltCell_3_4_Available = true ;
+        }
+        if (NUMBEROFCELLS > 4) {
+            if (NUMBEROFCELLS == 5) {
+              secondMVolt = 0 ; 
+            }
+            else { 
+              secondMVolt = arduinoData.mVolt[5] ;
+            }  
+            arduinoData.mVoltCell_5_6 = calculateCell(arduinoData.mVolt[3] , arduinoData.mVolt[4] , secondMVolt , 4) ;
+            arduinoData.mVoltCell_5_6_Available = true ;
+        }
+#endif
+        cnt=0;
+        lastVoltMillis = millis() ;
+        
+      }   // End if VOLT_BUFFER_LENGTH
+   }     // End if == 6
+}
+
+
+
+void OXS_ARDUINO::resetValues() {
+  // not used currently
 }    
 
-/* readVcc - Read the real internal supply voltageof the arduino 
- Improving Accuracy
- While the large tolerance of the internal 1.1 volt reference greatly limits the accuracy 
- of this measurement, for individual projects we can compensate for greater accuracy. 
- To do so, simply measure your Vcc with a voltmeter and with our readVcc() function. 
- Then, replace the constant 1125300L with a new constant:
- 
- scale_constant = internal1.1Ref * 1023 * 1000
- 
- where
- 
- internal1.1Ref = 1.1 * Vcc1 (per voltmeter) / Vcc2 (per readVcc() function)
- 
- This calibrated value will be good for the AVR chip measured only, and may be subject to
- temperature variation. Feel free to experiment with your own measurements. 
- */
-/* 
- Meine Versorgungsspannung per Multimeter =4,87V 
- 1,1*4870 /5115 =1,047311827957
- */
-//const long scaleConst = 1071.4 * 1000 ; // internalRef * 1023 * 1000;
-const long scaleConst = 1125.300 * 1000 ; // internalRef * 1023 * 1000;
-uint16_t OXS_ARDUINO::readVccMv() {
-  // Read 1.1V reference against AVcc
-  // set the reference to Vcc and the measurement to the internal 1.1V reference
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-  ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-  ADMUX = _BV(MUX5) | _BV(MUX0);
-#elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-  ADMUX = _BV(MUX3) | _BV(MUX2);
+
+int OXS_ARDUINO::readVoltage( int value ) { // value is the index in an aray giving the pin to read
+  //******** First discharge the capacitor of ADCMux to ground in order to avoid that measurement from another pin has an impact on this measurement  
+#ifdef USE_INTERNAL_REFERENCE
+  ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0); // binary = 11 00 1111 (11 = use VRef as max, 1111 = measure ground level)
 #else
-  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-#endif  
-
-  delay(1); // Wait for Vref to settle // Not reqruited for pro mini with atmega328
-  ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA,ADSC)); // measuring
-
-  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
-  uint8_t high = ADCH; // unlocks both
-
-  uint16_t result = (high<<8) | low;
-
-  //result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  result = scaleConst / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  return (uint16_t)result; // Vcc in millivolts
-}
-/****************************************************/
-/* Savexyz - save a new  value to the buffer        */
-/* Buffer for calculating the Averages     */
-/****************************************************/
-void OXS_ARDUINO::SaveVRef(uint16_t value)
-{
-  static byte cnt =0;
-//  static uint32_t sum=0;
-  vrefSum+=value;
-  cnt++;
-  if(cnt>=VREF_BUFFER_LENGTH){
-    arduinoData.vrefMilliVolts=vrefSum/VREF_BUFFER_LENGTH;
-    if(arduinoData.minVrefMilliVolts>arduinoData.vrefMilliVolts)arduinoData.minVrefMilliVolts=arduinoData.vrefMilliVolts;
-    if(arduinoData.maxVrefMilliVolts<arduinoData.vrefMilliVolts)arduinoData.maxVrefMilliVolts=arduinoData.vrefMilliVolts;
-    vrefSum=0;
-    cnt=0;
-  }
-}
-void OXS_ARDUINO::SaveDividerVoltage(uint16_t value)
-{
-  static byte cnt =0;
-  ArduinoSum+=value;
-
-  cnt++;
-  if(cnt==DIVIDER_BUFFER_LENGTH){
-    arduinoData.dividerMilliVolts=ArduinoSum/DIVIDER_BUFFER_LENGTH ;
-
-#ifdef VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV
-    if ((int32_t)arduinoData.dividerMilliVolts >(int32_t)VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV)arduinoData.dividerMilliVolts+=VOLTAGE_DIVIDER_CALIBRATION_OFFSET_MV;
-    else arduinoData.dividerMilliVolts=0;
+  ADMUX =  _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0); // binary = 01 00 1111 (01 = use Vcc as max, 1111 = measure ground level)
 #endif
-    if(arduinoData.minDividerMilliVolts>arduinoData.dividerMilliVolts)arduinoData.minDividerMilliVolts=arduinoData.dividerMilliVolts;
-    if(arduinoData.maxDividerMilliVolts<arduinoData.dividerMilliVolts)arduinoData.maxDividerMilliVolts=arduinoData.dividerMilliVolts; 
-    cnt=0;
-    ArduinoSum=0;
-//    cnt=0;
-  }
+    delayMicroseconds(200); // Wait for Vref to settle 
+  ADCSRA |= _BV(ADSC); // Start conversion
+  while (bit_is_set(ADCSRA,ADSC)); // wait that conversion is done
+  
+  analogRead( arduinoData.mVoltPin[value]); // read the value from the sensor 
+  // discard the first measurement
+  delayMicroseconds(100); // Wait for ADMux to settle 
+  return analogRead(arduinoData.mVoltPin[value]); // use the second measurement
 }
 
-
-
-
-
-
-
-
+// calculate 2 cell voltages, make some checks and format in Frsky format.
+uint32_t OXS_ARDUINO::calculateCell(int32_t V0 , int32_t V1 , int32_t V2 , int cellId) {
+  int32_t cell_1 ;
+  int32_t cell_2 ;
+  if (V0 < 500) V0 = 0 ;
+  if (V1 < 500) V1 = 0 ;
+  if (V2 < 500) V2 = 0 ;
+  cell_1= V1 - V0 ;
+  cell_2= V2 - V1 ;
+  if (cell_1 < 500) cell_1 = 0 ;
+  if (cell_2 < 500) cell_2 = 0 ;
+  cell_1 = (cell_1 >> 1) & 0xFFF ;
+  cell_2 = (cell_2 >> 1) & 0xFFF ; 
+#ifdef DEBUGCELLCALCULATION
+            printer->print("Cell calculation for cellId ");
+            printer->print(cellId) ;
+            printer->print(" Frist Cell = ");
+            printer->print(cell_1) ;
+            printer->print(" Second Cell = ");
+            printer->print(cell_2) ;
+            printer->print(" Frsky value = ");
+            printer->println( (cell_2 << 20) | (cell_1 << 8) | ( ( (int32_t) NUMBEROFCELLS)<<4 ) | (int32_t) cellId  , HEX );
+#endif
+  return (cell_2 << 20) | (cell_1 << 8) | ( ( (int32_t) NUMBEROFCELLS)<<4 ) | (int32_t) cellId ;
+}
