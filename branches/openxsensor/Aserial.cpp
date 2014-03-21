@@ -15,28 +15,41 @@
 
 // Author: Mike Blandford
 
+#define DEBUGSETNEWDATA
+
 #include "oxs_config.h"
 #include <Arduino.h>
 #include "Aserial.h"
+#include "oxs_out_frsky.h"          // Mike , one variable is shared between both files
+
+                                    // Mike, this code (delay_us) could be moved in a separate file with your function micros, millis, ...
+#define FOSC 16000000UL // internal clock of 16 mhz
+#define delay_us(x) {unsigned char _dcnt; \
+                      _dcnt = (x)/(24000000UL/FOSC)|1; \
+                      while(--_dcnt !=0) continue; \
+                    }
 
 #define FORCE_INDIRECT(ptr) __asm__ __volatile__ ("" : "=e" (ptr) : "0" (ptr))
-
+#ifdef FRSKY_SPORT
 struct t_sportData *FirstData = 0 ;
 struct t_sportData *ThisData = 0 ;
+#else // Hub protocol
+//struct t_hubData *FirstData = 0 ;
+struct t_hubData *ThisData = 0 ;
+#endif
 
-#define DEBUG 1
+//#define DEBUGASERIAL
 
 #ifdef FRSKY_SPORT
-#define BR_57600     //!< Desired baudrate
+// 57600 = Desired baudrate pour le Sport Interface = 17 micro sec per bit.
 
 //This section chooses the correct timer values for the chosen baudrate.
-// Assumes a 16MHz clock
+// Assumes a 16MHz clock                                                   !! Mike, here we have code only for 16 Mhz, lower in the code,there is code for 8 mhz too. Perhaps better to unify
 #define TICKS2COUNT         278  // Ticks between two bits.
 #define TICKS2WAITONE       278  // Wait one bit period.
 #define TICKS2WAITONE_HALF  416	 // Wait one and a half bit period.
-
 #else
-#define BR_9600     //!< Desired baudrate
+// 9600   =  Desired baudrate
 //This section chooses the correct timer values for 9600 baud.
 // Assumes a 16MHz clock
 #define TICKS2COUNT         (278*6)  // Ticks between two bits.
@@ -54,18 +67,15 @@ struct t_sportData *ThisData = 0 ;
 #define ENABLE_TIMER_INTERRUPT( )       ( TIMSK1 |= ( 1<< OCIE1A ) )
 #define DISABLE_TIMER_INTERRUPT( )      ( TIMSK1 &= ~( 1<< OCIE1A ) )
 #define CLEAR_TIMER_INTERRUPT( )        ( TIFR1 = (1 << OCF1A) )
-
-#define	DISABLE_TIMER0_INT()					( TIMSK0 &= ~(1<<TOIE0) )
-#define	ENABLE_TIMER0_INT()						( TIMSK0 |= (1<<TOIE0) )
-//#define	DISABLE_TWI_INT()							( TWCR &= ~(1<<TWINT) )
-//#define	ENABLE_TWI_INT()							( TWCR |= (1<<TWINT) )
+                                                                          // this code for TIMER0 is probably not required anymore.
+#define	DISABLE_TIMER0_INT()		( TIMSK0 &= ~(1<<TOIE0) ) //(Timer 0 is used by arduino lib micros() and millis()   
+#define	ENABLE_TIMER0_INT()		( TIMSK0 |= (1<<TOIE0) )
 
 #define TCCR             TCCR1A             //!< Timer/Counter Control Register
 #define TCCR_P           TCCR1B             //!< Timer/Counter Control (Prescaler) Register
 #define OCR              OCR1A              //!< Output Compare Register
 #define EXT_IFR          EIFR               //!< External Interrupt Flag Register
 #define EXT_ICR          EICRA              //!< External Interrupt Control Register
-//  #define TIMER_COMP_VECT  TIMER1_COMPA_vect  //!< Timer Compare Interrupt Vector
 
 #define TRXDDR  DDRD
 #define TRXPORT PORTD
@@ -74,20 +84,14 @@ struct t_sportData *ThisData = 0 ;
 #define SET_TX_PIN( )    ( TRXPORT |= ( 1 << PIN_SerialTX ) )
 #define CLEAR_TX_PIN( )  ( TRXPORT &= ~( 1 << PIN_SerialTX ) )
 #define GET_RX_PIN( )    ( TRXPIN & ( 1 << PIN_SerialTX ) )
-
-#ifdef FRSKY_SPORT
- #ifndef SENSOR_ID
-  #define SENSOR_ID		0x1B
- #endif
-#endif
-
+                                          // Mike no need to define SENSOR_ID, it is already in config
 // UART's state.
 #define   IDLE               0        // Idle state, both transmit and receive possible.
 #define   TRANSMIT           1        // Transmitting byte.
 #define   TRANSMIT_STOP_BIT  2        // Transmitting stop bit.
 #define   RECEIVE            3        // Receiving byte.
-#define		TxPENDING          4
-#define		WAITING            5
+#define	  TxPENDING          4
+#define	  WAITING            5
 
 static volatile uint8_t state ;     //!< Holds the state of the UART.
 static volatile unsigned char SwUartTXData;     //!< Data to be transmitted.
@@ -107,18 +111,63 @@ void setNewData( struct t_sportData *pdata, uint16_t id, uint32_t value )
 {
 	pdata->dataLock = 1 ;
 	pdata->data[0] = 0x10 ;
-	pdata->data[1] = id ;
-	pdata->data[2] = id >> 8 ;
+	pdata->data[1] = id ; // low byte
+	pdata->data[2] = id >> 8 ; // hight byte
 	pdata->data[3] = value ;
 	pdata->data[4] = value >> 8 ;
 	pdata->data[5] = value >> 16 ;
 	pdata->data[6] = value >> 24 ;
 	pdata->dataLock = 0 ;
+#ifdef DEBUGSETNEWDATA                                        // Mike this code was for debug only, can be removed or set with #ifdef 
+        Serial.print("set new data at ");
+        Serial.print( millis());
+        Serial.print(" ");
+        Serial.print( pdata->data[0] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[1] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[2] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[3] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[4] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[5] , HEX );
+        Serial.print(" ");
+        Serial.print( pdata->data[6] , HEX );
+        Serial.println(" ");
+#endif
+              
 }
-#else
+#else  // Hub protocol
 
-volatile uint8_t ByteToSend ;
-volatile uint8_t TxNotEmpty ;
+volatile uint8_t TxCount ;
+volatile uint8_t TxData[30] ;
+volatile uint8_t TxMax ;
+
+//volatile uint8_t ByteToSend ;
+//volatile uint8_t TxNotEmpty ;
+
+void setNewData( struct t_hubData *pdata )
+{
+  if ( (TxCount == 0) && (pdata->maxData > 0) ) {
+    for (int cntNewData = 0 ; cntNewData < pdata->maxData ; cntNewData++) {
+          TxData[cntNewData] = pdata->data[cntNewData] ;
+      }
+      TxMax = pdata->maxData  ;
+#ifdef DEBUGSETNEWDATA
+          Serial.print("set new data at ");
+          Serial.print( millis());
+          Serial.print(" ");  
+          for (int cntNewData = 0 ; cntNewData < pdata->maxData ; cntNewData++) {
+            Serial.print( pdata->data[cntNewData] , HEX );
+            Serial.print(" ");
+          }
+          Serial.println(" ");        
+#endif          
+      startTransmit() ;
+  }    
+}
 
 void startTransmit()
 {
@@ -126,22 +175,23 @@ void startTransmit()
 	{
 		return ;
 	}
-  SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
+        SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
 	cli() ;
 	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
  	CLEAR_TIMER_INTERRUPT() ;         // Clear interrupt bits
 	sei() ;
-  SwUartTXBitCount = 0 ;
-	SwUartTXData = ByteToSend ;
-	TxNotEmpty = 0 ;
-  state = TRANSMIT ;
+        SwUartTXBitCount = 0 ;
+	SwUartTXData = TxData[0] ;
+	//TxNotEmpty = 0 ;
+        state = TRANSMIT ;
  	ENABLE_TIMER_INTERRUPT() ;        // Enable timer1 interrupt on again
-#if DEBUG
+#if DEBUGASERIAL
 	PORTC &= ~1 ;
 #endif
 
 }
 
+/* // move to Out_frsky.cpp
 void sendHubByte( uint8_t byte )
 {
 	while ( TxNotEmpty )		// Busy
@@ -156,20 +206,22 @@ void sendHubByte( uint8_t byte )
 		// wait
 	}
 }
-
+*/
 #endif
 
- /*! \brief  External interrupt service routine.
- *
- *  The falling edge in the beginning of the start
- *  bit will trig this interrupt. The state will
- *  be changed to RECEIVE, and the timer interrupt
- *  will be set to trig one and a half bit period
- *  from the falling edge. At that instant the
- *  code should sample the first data bit.
- *
- *  \note  initSoftwareUart( void ) must be called in advance.
- */
+
+// ! \brief  External interrupt service routine.  ********************
+//  Interrupt on Pin Change to detect change on level on SPORT signal (= could be a start bit)
+//
+// The falling edge in the beginning of the start
+//  bit will trig this interrupt. The state will
+//  be changed to RECEIVE, and the timer interrupt
+//  will be set to trig one and a half bit period
+//  from the falling edge. At that instant the
+//  code should sample the first data bit.
+//
+//  note  initSoftwareUart( void ) must be called in advance.
+//
 // This is the pin change interrupt for port D
 // This assumes it is the only pin change interrupt
 // on this port
@@ -182,71 +234,101 @@ ISR(PCINT2_vect)
 //PORTC &= ~2 ;
 		state = RECEIVE ;                 // Change state
   	
-  	DISABLE_TIMER_INTERRUPT() ;       // Disable timer to change its registers.
+  	        DISABLE_TIMER_INTERRUPT() ;       // Disable timer to change its registers.
   	
-  	OCR1A = TCNT1 + TICKS2WAITONE_HALF - INTERRUPT_EXEC_CYCL - INTERRUPT_EARLY_BIAS ; // Count one and a half period into the future.
+        	OCR1A = TCNT1 + TICKS2WAITONE_HALF - INTERRUPT_EXEC_CYCL - INTERRUPT_EARLY_BIAS ; // Count one and a half period into the future.
 
-#if DEBUG
-	PORTC |= 1 ;
+#if DEBUGASERIAL
+	        PORTC |= 1 ;
 #endif
 
-  	SwUartRXBitCount = 0 ;            // Clear received bit counter.
-  	CLEAR_TIMER_INTERRUPT() ;         // Clear interrupt bits
-  	ENABLE_TIMER_INTERRUPT() ;        // Enable timer1 interrupt on again
+  	        SwUartRXBitCount = 0 ;            // Clear received bit counter.
+  	        CLEAR_TIMER_INTERRUPT() ;         // Clear interrupt bits
+  	        ENABLE_TIMER_INTERRUPT() ;        // Enable timer1 interrupt on again
 	}
 }
 #endif
-/*! \brief  Timer0 interrupt service routine.
- *
- *  Timer0 will ensure that bits are written and
- *  read at the correct instants in time.
- *  The state variable will ensure context
- *  switching between transmit and recieve.
- *  If state should be something else, the
- *  variable is set to IDLE. IDLE is regarded
- *  as a safe state/mode.
- *
- */
+//! \brief  Timer1 interrupt service routine. *************** interrupt between 2 bits (handled by timer1)
+//
+//  Timer1 will ensure that bits are written and
+//  read at the correct instants in time.
+//  The state variable will ensure context
+//  switching between transmit and recieve.
+//  If state should be something else, the
+//  variable is set to IDLE. IDLE is regarded
+//  as a safe state/mode.
 
 uint8_t ByteStuffByte = 0 ;
 
 ISR(TIMER1_COMPA_vect)
 {
+
   switch (state)
 	{
   // Transmit Byte.
-	  case TRANSMIT :		// Output the TX buffer.
-#if DEBUG
-	PORTC |= 1 ;
+	  case TRANSMIT :		// Output the TX buffer.************ on envoie des bits de data
+#if DEBUGASERIAL
+	        PORTC |= 1 ;
 #endif
-    	if( SwUartTXBitCount < 8 )
-			{
-    	  if( SwUartTXData & 0x01 )
-				{           // If the LSB of the TX buffer is 1:
-    	    CLEAR_TX_PIN() ;                    // Send a logic 1 on the TX_PIN.
-    	  }
-    	  else
-				{                                // Otherwise:
-    	    SET_TX_PIN() ;                      // Send a logic 0 on the TX_PIN.
-    	  }
-    	  SwUartTXData = SwUartTXData >> 1 ;    // Bitshift the TX buffer and
-    	  SwUartTXBitCount += 1 ;               // increment TX bit counter.
-    	}
-    	else		//Send stop bit.
-			{
-    	  CLEAR_TX_PIN();                         // Output a logic 1.
-    	  state = TRANSMIT_STOP_BIT;
-				ENABLE_TIMER0_INT() ;									// Allow this in now.
-    	}
-	  	OCR1A += TICKS2WAITONE ;  // Count one period into the future.
-#if DEBUG
-	PORTC &= ~1 ;
+        	if( SwUartTXBitCount < 8 )
+    			{
+        	  if( SwUartTXData & 0x01 )
+    				{           // If the LSB of the TX buffer is 1:
+        	    CLEAR_TX_PIN() ;                    // Send a logic 1 on the TX_PIN.
+        	  }
+        	  else
+    				{                                // Otherwise:
+        	    SET_TX_PIN() ;                      // Send a logic 0 on the TX_PIN.
+        	  }
+        	  SwUartTXData = SwUartTXData >> 1 ;    // Bitshift the TX buffer and
+        	  SwUartTXBitCount += 1 ;               // increment TX bit counter.
+        	}
+        	else		//Send stop bit.
+    			{
+        	  CLEAR_TX_PIN();                         // Output a logic 1.
+        	  state = TRANSMIT_STOP_BIT;
+                //ENABLE_TIMER0_INT() ;	                  // Allow this in now.
+        	}
+    	  	OCR1A += TICKS2WAITONE ;  // Count one period into the future.
+  
+  /*              
+              // Here another code in order to avoid going out of interrupt during transmission
+                
+                while ( SwUartTXBitCount < 8) {
+    	          if( SwUartTXData & 0x01 )
+		    {           // If the LSB of the TX buffer is 1:
+    	              CLEAR_TX_PIN() ;                    // Send a logic 1 on the TX_PIN.
+    	            }
+    	          else
+		    {                                // Otherwise:
+    	              SET_TX_PIN() ;                      // Send a logic 0 on the TX_PIN.
+    	            }
+    	          SwUartTXData = SwUartTXData >> 1 ;    // Bitshift the TX buffer and
+    	          SwUartTXBitCount += 1 ;               // increment TX bit counter.
+                  OCR1A += TICKS2WAITONE ;  // Count one period into the future.
+                  //digitalWrite(PIN_LED, HIGH );
+                  do { }
+                    while ( !(TIFR1 & (1 << OCF1A) ) ) ; 
+                  CLEAR_TIMER_INTERRUPT( ) ; 
+                  //digitalWrite(PIN_LED, LOW );
+                  
+                  
+    	        } // end while 8 bits have been sent
+    	                        
+                CLEAR_TX_PIN();                         // Output a logic 1.
+    	        state = TRANSMIT_STOP_BIT;
+		//ENABLE_TIMER0_INT() ;									// Allow this in now.
+    	        OCR1A += TICKS2WAITONE ;  // Count one period into the future.
+                CLEAR_TIMER_INTERRUPT( ) ;
+*/
+#if DEBUGASERIAL
+	      PORTC &= ~1 ;
 #endif
-  	break ;
+  	      break ;
 
   // Go to idle after stop bit was sent.
-  case TRANSMIT_STOP_BIT:
-#ifdef FRSKY_SPORT
+          case TRANSMIT_STOP_BIT: //************************************* We send a stop bit
+#ifdef FRSKY_SPORT 
 		if ( ByteStuffByte || (++TxCount < 8) )		// Have we sent 8 bytes?
 		{
 			if ( ByteStuffByte )
@@ -255,209 +337,285 @@ ISR(TIMER1_COMPA_vect)
 				ByteStuffByte = 0 ;
 			}
 			else
-			{
-				if ( TxCount < 7 )		// Data (or crc)?
-				{
-					SwUartTXData = TxData[TxCount] ;
-				  Crc += SwUartTXData ; //0-1FF
-				  Crc += Crc >> 8 ; //0-100
-				  Crc &= 0x00ff ;
-				}
-				else
-				{
-					SwUartTXData = 0xFF-Crc ;
-				}
-				if ( ( SwUartTXData == 0x7E ) || ( SwUartTXData == 0x7D ) )
-				{
-					ByteStuffByte = SwUartTXData ^ 0x20 ;
-					SwUartTXData = 0x7D ;					
-				}
+                        {
+		            if ( TxCount < 7 )		// Data (or crc)?
+		            {
+			        SwUartTXData = TxData[TxCount] ;
+			        Crc += SwUartTXData ; //0-1FF
+			        Crc += Crc >> 8 ; //0-100
+			        Crc &= 0x00ff ;
+		            }
+		            else
+		            {
+			        SwUartTXData = 0xFF-Crc ; // prepare sending check digit
+		            }
+                            if ( ( SwUartTXData == 0x7E ) || ( SwUartTXData == 0x7D ) )
+                  	        {
+				  ByteStuffByte = SwUartTXData ^ 0x20 ;
+				  SwUartTXData = 0x7D ;					
+			    }
 			}
-      SET_TX_PIN() ;                // Send a logic 0 on the TX_PIN.
-	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
+                  SET_TX_PIN() ;                // Send a logic 0 on the TX_PIN.
+	          OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
 		  SwUartTXBitCount = 0 ;
 		  state = TRANSMIT ;
-			DISABLE_TIMER0_INT() ;						// For the byte duration
+		  //DISABLE_TIMER0_INT() ;						// For the byte duration
 		}
-		else
+	      else  // 8 bytes have been send
 		{
-			state = WAITING ;
-			OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
-			TRXDDR &= ~( 1 << PIN_SerialTX );   // PIN is input, tri-stated.
+		  state = WAITING ;
+                  sendStatus = SEND ;
+		  OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
+		  TRXDDR &= ~( 1 << PIN_SerialTX );   // PIN is input, tri-stated.
 		  TRXPORT &= ~( 1 << PIN_SerialTX );  // PIN is input, tri-stated.
+       		  
+                  struct t_sportData *pdata = ThisData ;
+		  FORCE_INDIRECT( pdata ) ;
 
-			struct t_sportData *pdata = ThisData ;
-			FORCE_INDIRECT( pdata ) ;
-
-			pdata->serialSent = 1 ;
-			DataSent = 1 ;
-			SportSync = 1 ;
-			pdata = pdata->next ;
-			if ( pdata == 0 )		// Wrap at end
-			{
-				pdata = FirstData ;
-			}
-			ThisData = pdata ;
+		  pdata->serialSent = 1 ;
+		  DataSent = 1 ;
+		  SportSync = 1 ;
+		  pdata = pdata->next ;
+		  if ( pdata == 0 )		// Wrap at end
+		    {
+			pdata = FirstData ;
+		    }
+		  ThisData = pdata ;
 		}
 
-#else
+#else   // here the hub protocol
+		if ( ++TxCount < TxMax) 		// Have we sent all bytes?
+		{
+                  SwUartTXData = TxData[TxCount] ;			        
+                  SET_TX_PIN() ;                // Send a logic 0 on the TX_PIN.
+	          OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
+		  SwUartTXBitCount = 0 ;
+		  state = TRANSMIT ;
+		  //DISABLE_TIMER0_INT() ;						// For the byte duration
+		}
+	        else  // all bytes have been send
+		{
+		  TxCount = 0 ;
+                  TxMax = 0 ;
+                  state = WAITING ;
+                  //sendStatus = SEND ;
+                  OCR1A += ((uint16_t)100*16) ;		// 100uS gap
+		  //OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
+		  //TRXDDR &= ~( 1 << PIN_SerialTX );   // PIN is input, tri-stated.
+		  //TRXPORT &= ~( 1 << PIN_SerialTX );  // PIN is input, tri-stated.
+       		  
+                  struct t_hubData *pdata = ThisData ;
+		  FORCE_INDIRECT( pdata ) ;
+                  
+
+		  //pdata->serialSent = 1 ;
+		  //DataSent = 1 ;
+		  //SportSync = 1 ;
+		  //pdata = pdata->next ;
+		  //if ( pdata == 0 )		// Wrap at end
+		  //  {
+		  //	pdata = FirstData ;
+		  //  }
+		  //ThisData = pdata ;
+		}
+
+
+
+
+
+
+// here original code
+/*
 		if ( TxNotEmpty )
 		{
-      SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
-	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
+                        SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
+	  	        OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
 			SwUartTXData = ByteToSend ;		// Grab byte
 			TxNotEmpty = 0 ;							// Mark 'sent'
  			state = TRANSMIT ;
-		  SwUartTXBitCount = 0 ;
+		        SwUartTXBitCount = 0 ;
 		}
 		else
 		{
 			OCR1A += ((uint16_t)100*16) ;		// 100uS gap 
-	    state = WAITING ;               // Go back to idle.
+	                state = WAITING ;               // Go back to idle.
 		}
-
+*/
 #endif
 
-  break ;
-
+               break ;
+               
 #ifdef FRSKY_SPORT
-  //Receive Byte.
-  case RECEIVE :
-    OCR1A += TICKS2WAITONE ;                // Count one period after the falling edge is trigged.
-    //Receiving, LSB first.
+          case RECEIVE :  // Start bit has been received and we will read bits of data      
+            OCR1A += TICKS2WAITONE ;                // Count one period after the falling edge is trigged.
+            //Receiving, LSB first.
+	    {
+		uint8_t data ;				// Use a temporary local storage
+	 	data = SwUartRXBitCount ;
+    	        if( data < 8 )                         // If 8 bits are not yet read
 		{
-			uint8_t data ;				// Use a temporary local storage
-		 	data = SwUartRXBitCount ;
-    	if( data < 8 )
+    	            SwUartRXBitCount = data + 1 ;
+		    data = SwUartRXData ;
+		    data >>= 1 ;		         // Shift due to receiving LSB first.
+#if DEBUGASERIAL
+	            PORTC &= ~1 ;
+#endif
+    	            if( GET_RX_PIN( ) == 0 )
+		    {
+    	              data |= 0x80 ;          // If a logical 1 is read, let the data mirror this.
+    	            }
+#if DEBUGASERIAL
+	            PORTC |= 1 ;
+#endif
+		    SwUartRXData = data ;
+    	        }
+    	        else	//Done receiving =  8 bits are in SwUartRXData
+		{
+#if DEBUGASERIAL
+	            PORTC &= ~1 ;
+#endif
+		    if ( LastRx == 0x7E )
+		    {
+			if ( SwUartRXData == SENSOR_ID )
 			{
-    	  SwUartRXBitCount = data + 1 ;
-				data = SwUartRXData ;
-				data >>= 1 ;		         // Shift due to receiving LSB first.
-#if DEBUG
-	PORTC &= ~1 ;
-#endif
-    	  if( GET_RX_PIN( ) == 0 )
-				{
-    	    data |= 0x80 ;          // If a logical 1 is read, let the data mirror this.
-    	  }
-#if DEBUG
-	PORTC |= 1 ;
-#endif
-				SwUartRXData = data ;
-    	}
-    	else	//Done receiving
-			{
-#if DEBUG
-	PORTC &= ~1 ;
-#endif
-				if ( LastRx == 0x7E )
-				{
-					if ( SwUartRXData == SENSOR_ID )
-					{
-						// This is us
-						struct t_sportData *pdata = ThisData ;
-						FORCE_INDIRECT( pdata ) ;
-						if ( pdata )	// We have something to send
-						{
-							if ( pdata->dataLock == 0 )
-							{
- 								TxData[0] = pdata->data[0] ;
- 								TxData[1] = pdata->data[1] ;
- 								TxData[2] = pdata->data[2] ;
- 								TxData[3] = pdata->data[3] ;
- 								TxData[4] = pdata->data[4] ;
- 								TxData[5] = pdata->data[5] ;
- 								TxData[6] = pdata->data[6] ;
-							}
-							else
-							{	// Discard frame to be sent
-								TxData[0] = 0 ;
-								TxData[1] = 0 ;
-								TxData[2] = 0 ;
-								TxData[3] = 0 ;
-								TxData[4] = 0 ;
-								TxData[5] = 0 ;
-								TxData[6] = 0 ;
-							}
-							state = TxPENDING ;
-							OCR1A += (400*16-TICKS2WAITONE) ;		// 400 uS gap before sending
-						}
-						else
-						{
-							// Wait for idle time
-							state = WAITING ;
-							OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
-						}
-					}
-					else
-					{
-						state = WAITING ;
-						OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
-						SportSync = 1 ;
-					}
-				}
-				else
-				{
-		    	DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
-	  		  state = IDLE ;                // Go back to idle.
-					PCIFR = (1<<PCIF2) ;					// clear pending interrupt
-					PCICR |= (1<<PCIE2) ;					// pin change interrupt enabled
-//PORTC |= 2 ;
-				}
-				LastRx = SwUartRXData ;
-    	}
-		}
-  break ;
-  
-		case TxPENDING :
-#if DEBUG
-	PORTC |= 1 ;
-#endif
-			TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output
-      SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
-	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
-		  SwUartTXBitCount = 0 ;
-			Crc = SwUartTXData = TxData[0] ;
-			TxCount = 0 ;
-		  state = TRANSMIT ;
-			DISABLE_TIMER0_INT() ;						// For the byte duration
-#if DEBUG
-	PORTC &= ~1 ;
-#endif
-  	break ;
-#endif
+		          // This is us
+			  struct t_sportData *pdata = ThisData ;
+			  FORCE_INDIRECT( pdata ) ;
+			  //if ( pdata )	// We have something to send
+			  if   ( sendStatus == LOADED ){                                           // ( true ){
+			    if ( pdata->dataLock == 0 ) {
+/*			    This part can help debug the transmission of a value,      Mike it could be set in a #ifdef
+                                switch (idToSend) { 
+                                     case VARIO_ID :
+                                       idToSend = DIVIDER_VOLTAGE_ID ;
+                                       break ;
+                                     case DIVIDER_VOLTAGE_ID :
+                                       idToSend = VCC_ID ;
+                                       break ;
+                                      case VCC_ID :
+                                       idToSend =  ALT_ID ;
+                                       break ;
+                                      default :
+                                       idToSend = VARIO_ID ;
+                                 } 
+                                
+                                idToSend = DIVIDER_VOLTAGE_ID ;
 
-		case WAITING :
-#ifdef FRSKY_SPORT
-    	DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
-	    state = IDLE ;                // Go back to idle.
+                                TxData[0] = 0x10 ;
+ 			        TxData[1] = idToSend ; // partie basse de l ID pour une valeur
+ 				TxData[2] = idToSend >> 8 ;
+ 				TxData[3] = TxData[3] + 1 ;
+ 				TxData[4] = 0 ;
+ 				TxData[5] = 0 ;
+ 				TxData[6] = 0 ;
+
+ */                               
+ 				TxData[0] = pdata->data[0] ;
+ 			        TxData[1] = pdata->data[1] ;
+ 				TxData[2] = pdata->data[2] ;
+ 				TxData[3] = pdata->data[3] ;
+ 				TxData[4] = pdata->data[4] ;
+ 				TxData[5] = pdata->data[5] ;
+ 				TxData[6] = pdata->data[6] ;
+                                
+			    }
+			    else
+			    {	// Discard frame to be sent
+				TxData[0] = 0 ;
+				TxData[1] = 0 ;
+				TxData[2] = 0 ;
+			        TxData[3] = 0 ;
+				TxData[4] = 0 ;
+				TxData[5] = 0 ;
+				TxData[6] = 0 ;
+			    }
+			    state = TxPENDING ;
+                            sendStatus = SENDING ;
+                            OCR1A += (400*16-TICKS2WAITONE) ;		// 400 uS gap before sending
+			  }
+			  else
+			  {
+			    // Wait for idle time
+			    state = WAITING ;
+			    OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
+			  }
+		        }
+			else // it is not the expected device ID
+			{
+			    state = WAITING ;
+			    OCR1A += ((uint16_t)3500*16) ;		// 3.5mS gap before listening
+			    SportSync = 1 ;
+			}
+		  }
+		  else // Previous code is not equal to x7E 
+	          {
+		    	DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
+	  	        state = IDLE ;                // Go back to idle.
 			PCIFR = (1<<PCIF2) ;					// clear pending interrupt
 			PCICR |= (1<<PCIE2) ;					// pin change interrupt enabled
 //PORTC |= 2 ;
+		  }
+		  LastRx = SwUartRXData ;
+    	       } // End receiving  1 bit or 1 byte (8 bits)
+	  }
+          break ;
+  
+	case TxPENDING :
+#if DEBUGASERIAL
+	    PORTC |= 1 ;
+#endif
+	    TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output
+            SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
+	    OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
+	    SwUartTXBitCount = 0 ;
+	    Crc = SwUartTXData = TxData[0] ;
+	    TxCount = 0 ;
+	    state = TRANSMIT ;
+	    //DISABLE_TIMER0_INT() ;						// For the byte duration
+#if DEBUGASERIAL
+	    PORTC &= ~1 ;
+#endif
+  	    break ;
+#endif // end of Frsky_Port
+
+	case WAITING :
+#ifdef FRSKY_SPORT
+    	       DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
+	       state = IDLE ;                          // Go back to idle.
+	       PCIFR = (1<<PCIF2) ;					// clear pending interrupt
+	       PCICR |= (1<<PCIE2) ;					// pin change interrupt enabled
 #else  	
+    	       DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
+	       state = IDLE ;                          // Go back to idle.
+//	       PCIFR = (1<<PCIF2) ;					// clear pending interrupt
+//	       PCICR |= (1<<PCIE2) ;					// pin change interrupt enabled
+
+// here original code from Mike
+/*
 		if ( TxNotEmpty )
 		{
-      SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
-	  	OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
+                        SET_TX_PIN() ;                    // Send a logic 0 on the TX_PIN.
+	  	        OCR1A = TCNT1 + TICKS2WAITONE ;   // Count one period into the future.
 			SwUartTXData = ByteToSend ;		// Grab byte
 			TxNotEmpty = 0 ;							// Mark 'sent'
  			state = TRANSMIT ;
-		  SwUartTXBitCount = 0 ;
+		        SwUartTXBitCount = 0 ;
 		}
 		else
 		{
-    	DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
-	    state = IDLE ;                // Go back to idle.
+    	                DISABLE_TIMER_INTERRUPT() ;		// Stop the timer interrupts.
+	                state = IDLE ;                // Go back to idle.
 		}
+*/
 #endif
 		
-		break ;
+                break ;
 
   // Unknown state.
 	  default:        
-  	  state = IDLE;                           // Error, should not occur. Going to a safe state.
-  }
-}
+  	      state = IDLE;                           // Error, should not occur. Going to a safe state.
+  } // End CASE
+} // End of ISR
 
 
 /*! \brief  Function to initialize the UART.
@@ -471,47 +629,52 @@ ISR(TIMER1_COMPA_vect)
  */
 
 #ifdef FRSKY_SPORT
-void initSportUart( struct t_sportData *pdata )
+void initSportUart( struct t_sportData *pdata )   //*************** initialise UART pour SPORT
 {
-  FirstData = ThisData = pdata ;
-
-  // PORT
-  TRXDDR &= ~( 1 << PIN_SerialTX ) ;       // PIN is input, tri-stated.
-  TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is input, tri-stated.
+    FirstData = ThisData = pdata ;
+    
+    //PORT
+    TRXDDR &= ~( 1 << PIN_SerialTX ) ;       // PIN is input, tri-stated.
+    TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is input, tri-stated.
 
   // External interrupt
-
+  
 #if PIN_SerialTX == 4
-  PCMSK2 |= 0x10 ;  // IO4 (PD4) on Arduini mini
+    PCMSK2 |= 0x10 ;			// IO4 (PD4) on Arduini mini
 #elif PIN_SerialTX == 2
-  PCMSK2 |= 0x04 ;  // IO2 (PD2) on Arduini mini
+    PCMSK2 |= 0x04 ;  // IO2 (PD2) on Arduini mini
 #else
-  #error "This PIN is not supported"
+    #error "This PIN is not supported"
 #endif
 
-  PCIFR = (1<<PCIF2) ;	// clear pending interrupt
-  PCICR |= (1<<PCIE2) ;	// pin change interrupt enabled
 
-  // Internal State Variable
-  state = IDLE ;
 
-#if DEBUG
+    PCIFR = (1<<PCIF2) ;	// clear pending interrupt
+    PCICR |= (1<<PCIE2) ;	// pin change interrupt enabled
+
+    // Internal State Variable
+    state = IDLE ;
+
+#if DEBUGASERIAL
   DDRC = 0x03 ;		// PC0,1 as o/p debug
   PORTC = 0 ;
 #endif
 }
 
-#else // FRSKY_SPORT
+#else // Hub protocol
 
-void initHubUart()
+void initHubUart( struct t_hubData *pdata )
 {
+  ThisData = pdata ;
   TRXPORT &= ~( 1 << PIN_SerialTX ) ;      // PIN is low
   TRXDDR |= ( 1 << PIN_SerialTX ) ;       // PIN is output.
 	
   //Internal State Variable
   state = IDLE ;
+  TxMax = 0 ;
+  TxCount = 0 ;
 
-#if DEBUG
+#if DEBUGASERIAL
   DDRC = 0x03 ;		// PC0,1 as o/p debug
   PORTC = 0 ;
 #endif
@@ -526,8 +689,6 @@ uint32_t TotalMillis ;
 
 uint32_t lastEventTime ;
 uint8_t RpmCounter ;
-uint8_t RpmSet ;
-uint16_t Rpm = 60 ;
 
 // RPM code
 #ifdef MEASURE_RPM
@@ -555,7 +716,7 @@ ISR( TIMER1_CAPT_vect, ISR_NOBLOCK )
 		{
 			Rpm = 0 ;
 		}
-		RpmSet = 1 ;
+		RpmSet = true ;
 	}
 }
 
@@ -738,4 +899,5 @@ void delayMicroseconds(unsigned int us)
 		"brne 1b" : "=w" (us) : "0" (us) // 2 cycles
 	);
 }
+
 
