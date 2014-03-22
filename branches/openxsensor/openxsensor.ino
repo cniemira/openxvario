@@ -309,7 +309,8 @@ void Reset3SecButtonPress()
   Serial.println("================================================== Reset 3-5 sec");
 #endif
 #ifdef PIN_CurrentSensor
-  oxs_Current.currentData.consumedMilliAmps=0;
+  oxs_Current.currentData.consumedMilliAmps = 0;
+  oxs_Current.currentData.floatConsumedMilliAmps = 0 ;
 #endif
 }
 
