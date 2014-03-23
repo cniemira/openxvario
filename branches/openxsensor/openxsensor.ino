@@ -142,7 +142,7 @@ void loop(){  //****************************************************************
   // Check if a button has been pressed
 #ifdef VARIO
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)  ) checkButton(); // Do not perform calculation if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
 #else
     checkButton();
@@ -161,7 +161,7 @@ void loop(){  //****************************************************************
 #ifdef VARIO
 #ifdef PIN_PPM 
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)  ) ProcessPPMSignal();  // Do not perform calculation if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
 #endif //PIN_PPM 
 #endif //VARIO 
@@ -189,7 +189,7 @@ void readSensors() {   // ****************** Read all the sensors / Inputs
   if (oxs_Arduino.arduinoData.atLeastOneVoltage ) {
 #ifdef VARIO
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)   )  { // Do not perform calculation if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
         oxs_Arduino.readSensor();
     }    // read voltage only if there enough time to avoid delaying vario reading
@@ -202,7 +202,7 @@ void readSensors() {   // ****************** Read all the sensors / Inputs
 #ifdef PIN_CurrentSensor
 #ifdef VARIO
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)   ) oxs_Current.readSensor() ; // Do not perform calculation if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
 #else
   oxs_Current.readSensor(); // Read current
