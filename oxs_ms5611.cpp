@@ -153,7 +153,7 @@ void OXS_MS5611::readSensor() {
  
   if (varioData.SensorState==1) { // ========================= 
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros  > varioData.lastCommand2Micros + 4500){ // wait 9 msec at least before asking for reading the pressure
         long result = 0;
 //#ifdef POLLINGI2C               
@@ -191,7 +191,7 @@ void OXS_MS5611::readSensor() {
   } // end of SensorState == 1 
   else if (varioData.SensorState==2){ // =========================  
     extended2Micros = micros() >> 1 ;
-    if (extended2Micros < varioData.lastCommand2Micros) extended2Micros = extended2Micros || 0x80000000 ;
+    if (extended2Micros < varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros > varioData.lastCommand2Micros + 4500) { // wait 9000 usec to get Temp with high precision
 //#ifdef POLLINGI2C
           I2c.read( _addr, 0, 3 ) ; //read 3 bytes from the device
