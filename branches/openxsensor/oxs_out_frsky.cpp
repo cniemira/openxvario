@@ -18,7 +18,8 @@
 //#define DEBUGLOADVALUETOSENDCURRENTMA
 //#define DEBUGLOADVALUETOSENDMILLIAH
 //#define DEBUGHUBPROTOCOL
-//#define SEND_FixValueAsT1 // send a fix value as T1 - This is only in order to test that communication protocol works 
+//#define DEBUGWITHFIXVALUE     // for SPORT protocol only; send a value varying continuously (cycling) between min and max value (see code below)
+
 
 //#include "oxs_config.h"    // already in .h file
 //#include "Arduino.h"       // already in .h file
@@ -586,6 +587,15 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend) {
 
       }  // end Switch
       if ( (fieldContainsData[currentFieldToSend][0] != DEFAULTFIELD)  ) fieldID = fieldContainsData[currentFieldToSend][0] ;
+#ifdef DEBUGWITHFIXVALUE
+      static int delta = 1 ;
+      static int32_t prevValue = 0 ;
+      static int32_t maxValue = 255;
+      static int32_t minValue = -255;
+      if (prevValue <  minValue || prevValue >  maxValue) delta = delta * -1 ;
+      prevValue  = prevValue + delta ;
+      valueTemp = prevValue ; 
+#endif //End DEBUGWITHFIXVALUE
       setNewData( &MyData[0], fieldID  ,  (valueTemp * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3])  + fieldContainsData[currentFieldToSend][4] ) ; 
 
 #ifdef DEBUGLOADVALUETOSEND
