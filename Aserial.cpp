@@ -817,6 +817,26 @@ void init()
 #endif // MEASURE_RPM
 	sei();
 
+// timer2 (used by analoWrite to generate PWM
+	// set timer 2 prescale factor to 64
+#if defined(TCCR2) && defined(CS22)
+	sbi(TCCR2, CS22);
+#elif defined(TCCR2B) && defined(CS22)
+	sbi(TCCR2B, CS22);
+#else
+	#warning Timer 2 not finished (may not be present on this CPU)
+#endif
+
+	// configure timer 2 for phase correct pwm (8-bit)
+#if defined(TCCR2) && defined(WGM20)
+	sbi(TCCR2, WGM20);
+#elif defined(TCCR2A) && defined(WGM20)
+	sbi(TCCR2A, WGM20);
+#else
+	#warning Timer 2 not finished (may not be present on this CPU)
+#endif
+ 
+
 }
 
 void delay(unsigned long ms)

@@ -11,7 +11,7 @@
 //  1 - Protocol to be used to transmit data to Tx: it must be FRSKY_SPORT when using X serie Rx (X8R, X6R, ...) and NOT FRSKY_SPORT for D serie Rx
 //  1.1 - Sensor_ID to be used for X serie receiver 
 //  2 - Hardware setting: in this section, you define which sensors are connected and on which arduino pin
-//  2.1 - Digital pins used for Serial communication with TX, for reading a PPM signal from TX in order to adjust vario sensitivity, for checking a push button (reset some data)   
+//  2.1 - Digital pins used for Serial communication with TX, for reading a PPM signal from TX in order to adjust vario sensitivity, for checking a push button (reset some data) , for generating an analog signal based on vertical speed
 //  2.2 - Analog pins used to measure voltages; it requires normally some voltage dividers (= set of 2 resistors)
 //  2.3 - Analog pins used to measure current and consumption (it requires a cuurent sensor)
 //  3 - General set up to define wich measurements are transmitted and how
@@ -69,19 +69,24 @@
                                // It is a DIGITAL arduino pin that has to be connected to a push button, the other pin of the push button being connected to Gnd (ground)
                                // optional; default: 10 ; Do not use a pin that is already used for another purpose
                                // Put this line as comment to completly disable button code
- 
+                               
+#define PIN_AnalogClimbRate 3  // 3 the pin used to optionally write the vertical speed to the Rx a1 or a2 pin (can be 3 or 11 because it has to use timer 2)
+
 // Note : The digital pin 8 (PB0/ICP) is the only one to be used to measure RPM 
 
                             
 //**** 2.2 Analog Pins for voltages *********************************************************************************
-//   Analog pins can be used to measure up to 6 input voltages
-//   Note : one Analog pin can also be used to measure a current (see below), in this case, only 5 voltages can be measured.                                       
-//   The Pin value (on arduino) is a number from 0 up to 7 (0 means A0, 1 means A1, ...7 means A7)
+//   Analog pins can be used to measure up to 6 input voltages (please note that, depending on manufacter, some Arduino pro mini have less Analog pin available) 
+//   A voltage can be provided by a battery (e.g. a multicell lipo) or a sensor (e.g. a temperature sensor convert the temperature in a voltage that can be measured) 
+//   Note : one Analog pin can also be used to measure a current using a current sensor; the set up for a current sensor is described in section 2.3 (see below);
+//          in this case, only 5 voltages can be measured because Arduino has no enough Analog pin
+//   The Pin value (on arduino) is a number from 0 up to 7 (0 means A0 = Analog 0, 1 means A1, ...7 means A7)
 // !! Take care that the voltage applied to Arduino pin may not exceed Vcc (normally 5 volt) or 1.1 volt (if internal reference volatge is used).
-//   It can be that you have to use voltage divider in order to reduce the voltage applied on arduino pin
-//    see explanation below about voltage divider and about using VCC or 1.1 internal voltage divider.
+//   It can be that you have to use voltage divider in order to reduce the voltage applied on arduino pin compare to the voltage you want to measure
+//    See explanation below about voltage divider and about using VCC or 1.1 internal voltage divider.
+//   Note : all voltages are measured to ground; so, for a multicell lipo, it will be max 4.2 volt for the first cell, 8.4 for the second, 12.6 for the third,... 
 //   
-//   If there is no need to measure 6 voltage, DO NOT SET the line AS COMMENT BUT SET Pin VALUE = 8                                         
+//   If there is no need to measure 6 voltage, DO NOT SET the line AS COMMENT BUT SET THE VALUE = 8                                         
 //   Note :even if it does not make much sense ,the same pin value can be used for several PIN_Voltages (the voltage on this pin will then be measured for each PIN_Voltage setup)                                            
 //   Take care : do NOT use pins 4 and 5 if you use a vario                             
 //               (those pins are reserved for the barometric sensor)                   
@@ -95,8 +100,8 @@
 
 
 //**** 2.3 Analog pin used for curent sensor *********************************************************************************
-//     It is possible to measure a current (and current comsumption) if a current sensor is connected.
-//     This current sensor return a voltage that depends on the current. This voltage is measured by the arduino via an Analog pin
+//   It is possible to measure a current (and current comsumption) if a current sensor is connected.
+//   This current sensor returns a voltage that depends on the current. This voltage is measured by the arduino via an Analog pin
 //   The Pin value (on arduino) is a number from 0 up to 7 (0 means A0, 1 means A1, ...7 means A7)
 //   If a current sensor is used, better not to use a pin that is already used by a voltage.
 // !! Take care that the voltage applied to Arduino pin may not exceed Vcc (normally 5 volt) or 1.1 volt (if internal reference volatge is used).
@@ -117,8 +122,8 @@
 
 
 //**** 3 Fields to transmit **************************************************************************************
-// Each field send to TX has an field ID; Codes are normally different for SPORT and for HUB protocols
-// In some cases, it is possible to let Arduino automatically select the right code using "DEFAULTFIELD" (see below)
+// Each field send to TX has an field ID; this field_ID let TX know which kind of value it receives and how to use it. Codes are normally different for SPORT and for HUB protocols
+// In some cases, it is possible to let Arduino automatically select the right code using "DEFAULTFIELD" (see below).
 // Each data that Arduino can transmit has also a code in order to identify the data
 // In this section, you must specify which telemetry field_ID has to be used to transmit which data measured/calculated by Arduino
 //****3.1 Telemetry fields for SPORT **************************************************************
@@ -214,14 +219,25 @@
 
 
 //**** 3.3 Telemetry field both for SPORT and HUB *************************************************
-#define DEFAULTFIELD                0x00 // this value can be used to say that the measurement has to be transmitted using the normal field for this type of measurement.
+// The value DEFAULTFIELD can be used to say that the measurement has to be transmitted using the normal field for this type of measurement.
+// This value is valid for both protocols ( = types of receiver = D and X series); Arduino will automatically select the right field_ID taking care of the selected protocol and of the measurement)
+// Still not all measurements have a DEFAULTFIELD and on the opposite, some measurement are structure in such a special way, that only DEFULTFIELD makes sense.
+// In order to know for wich measurement DEFAULTFIELD value is allowed or must be used, look at the comments in section 3.4 below.
+// Note: in the Hub protocol (D serie receiver), DEFAULTFIELD option does not work 100% the same way as the equivalent field_ID for some measurement. That the case for  
+//       ALTIMETER (Hub protocol requires sending different fields for Meters and Centimeters)
+//       VERTICAL_SPEED (In Hub protocol that are some conversion of value 0.10 and -0.10 into 0.09 and -0.09 because it seems that some version had an issue)
+//       CURRENTMA (in Hub protocol, with DEFAULTFIELD , Arduino takes the absolute value of current in milliAmp), divide it automatically by 100 (so no additional multiplier/divider is needed)
+// Note: in the hub protocol, when DEFAULTFIELD is used, Aduinino do NOT apply the multiplier/divider/offset (because some fields have already a special formatting inside Arduino (see here above)
+
+#define DEFAULTFIELD                0x00 
+                                                  
 
 
 //**** 3.4  Data that can be transmitted to Tx *************************************************
 //  This is the list of codes for each available measurements
 //  Do not change those values
 //  Use those codes when you define which data has to be transmitted (see below) 
-#define ALTIMETER       1        // DEFAULTFIELD can be used
+#define ALTIMETER       1        // DEFAULTFIELD can be used in SPORT protocol (is then the same as ALT_FIRST_ID);  it MUST be used in Hub protocol because meters and centimeters are send in different fileds
 #define VERTICAL_SPEED  2        // DEFAULTFIELD can be used
 #define SENSITIVITY     3        // DEFAULTFIELD can NOT be used
 #define ALT_OVER_10_SEC 4        // DEFAULTFIELD can NOT be used ; this is the difference of altitude over the last 10 sec (kind of averaging vertical speed)
@@ -270,7 +286,10 @@
 //                     - to convert in other measurement system (meter <> foot)
 //                     - to convert in percentage (e.g. multiply by 100 and divide by 4000 in order to get the consumption of current in % for a 4000 mAmph accu)
 //                     - to adjust the number of digits displayed on Tx telemetry screen.
-//                     - to have e.g. a fuel value starting at 100 (in percent) and going down to 0 when consumption increase.
+//                     - to have e.g. a fuel value starting at 100 (in percent) and going down to 0 when consumption increase (then you must use a negative multiplier and an offset of 100%).
+//            Multiplier/divider/offset must be set up but they are not always taken into account by XOS; it is the case when:
+//                  - CELLS_1_2, CELLS_3_4, CELLS_5_6 is transmitted (because those fields have a special formatting required by Tx
+//                  - Field_ID is defined using the option DEFAULTFIELD combined with a Hub protocol (D serie Rx) because special formatting are applied (see 3.3 above)
 // Here an example of set up in order to transmit on SPORT protocol
 //    - as Altitude : the altitude measurement,
 //    - as Vertical speed : the vertical speed measurement
@@ -288,9 +307,9 @@
 //    So in both cases, the number of row to complete is the number of cells you have divided by 2 and rounded up to the higher integer value.
 //    E.g. for a lipo with 3 cells, you must specify 3 / 2 = 1.5 => 2 rows, selecting field CELLS_1_2 in first row  and CELLS_3_4 in second row.
 //             There is no need filling a third row because there is no cell 5 or 6
-//   You can say that both must be sent as CELLS_FIRST_ID  like this
+//    You can say that both must be sent as CELLS_FIRST_ID  like this
 //                          CELLS_FIRST_ID , CELLS_1_2 , 1, 1 ,\
-//                          CELLS_FIRST_ID , CELLS_3_4 , 1, 1  
+//                          CELLS_FIRST_ID , CELLS_3_4 , 1, 1
 // *********************************************************************
 //  IMPORTANT : keep always the line "#define SETUP_DATA_TO_SEND    \"  ; do not insert any comment lines after or between the rows used for the set up.
 /*
@@ -362,7 +381,15 @@
 //      The parameter allows to avoid that transmitted Vspd changes to often (wich can result in bad sound alerts)
 //      This parameter VARIOHYSTERESIS means that transmitted Vspd will change only if measure VSpd (after filtering) differs from previous transmitted value by more than this parameter
 //     Typical value can be 5  (= 5 cm/s); 0 means no hysteresis
-// Note : it is not required to comment the sensitivity and hysteresis parameters when a vario is not used (those parameters are just discarded)
+// 4.5 Arduino can also deliver the vertical speed as an analog signal that has to be connected to A1 or A2 on receiver
+//     This can be useful if you have a receiver that has no digital communication pin (or if it is already used by another sensor)
+//     Additional Hardware is required! read the WiKi if you want to use this
+//     To activate this:
+//     - define the digital pin being used (see hardware section)
+//     - set the min and max limits for the vertical speed (in meter/sec)
+//        - OutputClimbRateMin value or lower will apply 0 Volt to the receiver
+//        - OutputClimbRateMax  value or higher will apply 3.2 Volt to the receiver
+// Note : it is not required to comment the sensitivity, hysteresis and OutputClimbRateMin/Max parameters when a vario is not used (those parameters are just discarded)
 //*******************************************************************************************************************
 #define VARIO // set as comment if there is no vario 
 
@@ -377,6 +404,10 @@
 #define SENSITIVITY_PPM_MAX 100
 
 #define VARIOHYSTERESIS 5
+
+#define OutputClimbRateMin -3 
+#define OutputClimbRateMax  3 
+
 
 //**** 5 Set up for current sensor & 6 voltages **************************************************************************************
 //**** 5.1 - Select the reference (VCC or 1.1 internal voltage reference) ************************************************************
