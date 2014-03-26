@@ -283,7 +283,8 @@ void OXS_MS5611::readSensor() {
         pressureMicrosPrev2 = pressureMicrosPrev1 - 20000 ; 
         delaySmooth = 20000 ; // = 20msec = 20000 usec
         climbRateFloat = 0 ;
-      }  
+      }
+ //     if( (rawAltitude < altitude + 10000) && (rawAltitude > altitude - 10000) ) { 
       altitudeLowPass += 0.085 * ( rawAltitude - altitudeLowPass) ;
       altitudeHighPass += 0.1 * ( rawAltitude - altitudeHighPass) ;
       altitude += 0.04 * (rawAltitude - altitude) ;
@@ -335,7 +336,7 @@ void OXS_MS5611::readSensor() {
                 varioData.vSpeed10SecAvailable = true ;
             }  
         }  
-      } // end If recalccnt
+      } // end If (altMillis > nextAltMillis)
 #ifdef DEBUGDATA
       static bool firstPrintAlt = true ;
       if (firstPrintAlt == true) {
