@@ -1117,9 +1117,9 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
           if ( (SwitchFrameVariant == 0) && (currentData->consumedMilliAmpsAvailable) ){
                 if(  fieldOk == true ) {
                    SendValue((int8_t) fieldToSend ,(int16_t) ( (currentData->consumedMilliAmps * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3])) + fieldContainsData[currentFieldToSend][4] );
-                }  
-                currentData->consumedMilliAmpsAvailable = false ;
-          }
+                   currentData->consumedMilliAmpsAvailable = false ;  
+              }  
+           }
          break ;
       case FRSKY_USERDATA_CURRENT_MAX :
           if ( (SwitchFrameVariant == 0)  ) {

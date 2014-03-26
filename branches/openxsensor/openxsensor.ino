@@ -38,6 +38,9 @@ volatile uint16_t Rpm = 60 ;
 unsigned long lastRpmMillis ;
 bool RpmAvailable = false ;
 
+int PWRValue; // calculation field for Vertical speed on PWR
+unsigned long lastMillisPWR ;
+
 // Create instances of the used classes
                         // Mike, there is no need creating this class if there is no voltage to measure because this version does not read Internal ref regarding VCC anymore (even for measuring current)
   // to do : adapt the test on defined (PIN_Voltage...) because actual config.h expects now that all PIN_Voltage are defined ; a value > 7 means it is not used. 
@@ -100,10 +103,13 @@ void setup(){
 #ifdef VARIO
   oxs_MS5611.setup();
   oxs_OutFrsky.varioData=&oxs_MS5611.varioData; 
+#ifdef PIN_AnalogClimbRate
+  lastMillisPWR = 3500 ; // So we will wait for 3.5 sec before generating a Vertical speed on PWM
+  analogWrite(PIN_AnalogClimbRate,255/5*1.6); // initialize the output pin 
 #endif
+#endif // vario
 
 //micros();
-
 
 #ifdef PIN_CurrentSensor
   oxs_Current.setupCurrent( );
@@ -163,7 +169,20 @@ void loop(){  //****************************************************************
     extended2Micros = micros() >> 1 ;
     if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
     if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)  ) ProcessPPMSignal();  // Do not perform calculation if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
-#endif //PIN_PPM 
+#endif //PIN_PPM
+
+#ifdef PIN_AnalogClimbRate
+    if (millis() > lastMillisPWR + 100) {
+        extended2Micros = micros() >> 1 ;
+        if (extended2Micros < oxs_MS5611.varioData.lastCommand2Micros) extended2Micros = extended2Micros | 0x80000000 ;
+        if ( extended2Micros < (oxs_MS5611.varioData.lastCommand2Micros + 3500)  ) { // Do not change PWM if there is less than 2000 usec before MS5611 ADC is available =  (9000 - 2000)/2
+            PWRValue=map( (long) oxs_MS5611.varioData.climbRate,OutputClimbRateMin*100,OutputClimbRateMax*100,0,255/5*3.2);
+            PWRValue=constrain(PWRValue, 0, 255/5*3.2 ) ;
+            analogWrite(PIN_AnalogClimbRate,(int)PWRValue);
+            lastMillisPWR = millis() ; 
+        }
+    }  
+#endif
 #endif //VARIO 
 
 #ifdef SAVE_TO_EEPROM
