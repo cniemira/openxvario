@@ -261,22 +261,22 @@ void OXS_MS5611::readSensor() {
       if ( rawPressure > 954610000) {
         rawAltitude = ( 1013250000 - rawPressure ) * 0.08526603 ; // = 500 / (101325 - 95461)  // returned value 1234567 means 123,4567 m (temp is fixed to 15 degree celcius)
       } else if ( rawPressure > 898760000) {
-        rawAltitude = 500000 + ( 954610000 - rawPressure ) * 0.089525515  ; 
+        rawAltitude = 5000000 + ( 954610000 - rawPressure ) * 0.089525515  ; 
       } else if ( rawPressure > 845980000) {
-        rawAltitude = 1000000 + ( 898760000 - rawPressure ) * 0.094732853  ; 
+        rawAltitude = 10000000 + ( 898760000 - rawPressure ) * 0.094732853  ; 
       } else if ( rawPressure > 794980000) {
-        rawAltitude = 1500000 + ( 845980000 - rawPressure ) *  0.098039216 ; 
+        rawAltitude = 15000000 + ( 845980000 - rawPressure ) *  0.098039216 ; 
       } else if ( rawPressure > 746860000) {
-        rawAltitude = 2000000 + ( 794980000 - rawPressure ) *  0.103906899 ; 
+        rawAltitude = 20000000 + ( 794980000 - rawPressure ) *  0.103906899 ; 
       } else if ( rawPressure > 701120000) {
-        rawAltitude = 2500000 + ( 746860000 - rawPressure ) *  0.109313511 ; 
+        rawAltitude = 25000000 + ( 746860000 - rawPressure ) *  0.109313511 ; 
       } else if ( rawPressure > 657680000) {
-        rawAltitude = 3000000 + ( 701120000 - rawPressure ) *  0.115101289 ; 
+        rawAltitude = 30000000 + ( 701120000 - rawPressure ) *  0.115101289 ; 
       } else if ( rawPressure > 616450000) {
-        rawAltitude = 3500000 + ( 657680000 - rawPressure ) *  0.121270919 ; 
+        rawAltitude = 35000000 + ( 657680000 - rawPressure ) *  0.121270919 ; 
       } else if ( rawPressure > 577330000) {
-        rawAltitude = 4000000 + ( 616450000 - rawPressure ) *  0.127811861 ;
-      } else {    rawAltitude = 4500000 + ( 577330000 - rawPressure ) *  0.134843581 ;
+        rawAltitude = 40000000 + ( 616450000 - rawPressure ) *  0.127811861 ;
+      } else {    rawAltitude = 45000000 + ( 577330000 - rawPressure ) *  0.134843581 ;
       }  
       if (altitude == 0) {
         altitudeLowPass = altitudeHighPass = altitude = rawAltitude ;
