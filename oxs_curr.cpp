@@ -36,6 +36,7 @@ void OXS_CURRENT::setupCurrent( ) {
 }
 
 // **************** Read the Current sensor *********************
+#ifdef PIN_CurrentSensor
 void OXS_CURRENT::readSensor() {
   static int cnt = 0;
 //  static int cntMAmp =0;
@@ -80,6 +81,7 @@ void OXS_CURRENT::readSensor() {
       cnt = 0;
   }  
 }
+#endif
 
 
 void OXS_CURRENT::resetValues(){
