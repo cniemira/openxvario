@@ -57,20 +57,20 @@
                                // It is a DIGITAL arduino pin that has to be connected to "Rx" pin from receiver (for D serie RX) or to Signal pin (for X serie RX)
                                // mandatory ; default: 4 ; allowed values are 0 up to 7 but take care not using the same pin as PPM (if PPM is used) 
 
-#define PIN_PPM           2  // Arduino can read a PPM Signal coming from Tx. This allows to change the vario sensitivity using a pot or a switch on TX.
+//#define PIN_PPM           2  // Arduino can read a PPM Signal coming from Tx. This allows to change the vario sensitivity using a pot or a switch on TX.
                                // It is a DIGITAL arduino pin that has to be connected to a signal channel from receiver (like for a servo)
                                // optional; default: 2 ; you can also use pin 3 to read the PPM signal
                                // take care, only pin 2 or 3 may be used for PPM signal    
                                // Put this line as comment if you want to disable the remote control functionality
 
 
-#define PIN_PushButton    10  // Arduino can check if a push button has been pushed in order to reset some values (consumption, max altititude, max current, ...)
+//#define PIN_PushButton    10  // Arduino can check if a push button has been pushed in order to reset some values (consumption, max altititude, max current, ...)
                                // normally most of those parameters shoud best be kept on Tx side but I think it is not possible for current consumption
                                // It is a DIGITAL arduino pin that has to be connected to a push button, the other pin of the push button being connected to Gnd (ground)
                                // optional; default: 10 ; Do not use a pin that is already used for another purpose
                                // Put this line as comment to completly disable button code
                                
-#define PIN_AnalogClimbRate 3  // 3 the pin used to optionally write the vertical speed to the Rx a1 or a2 pin (can be 3 or 11 because it has to use timer 2)
+//#define PIN_AnalogClimbRate 3  // 3 the pin used to optionally write the vertical speed to the Rx a1 or a2 pin (can be 3 or 11 because it has to use timer 2)
 
 // Note : The digital pin 8 (PB0/ICP) is the only one to be used to measure RPM 
 
@@ -91,7 +91,7 @@
 //   Take care : do NOT use pins 4 and 5 if you use a vario                             
 //               (those pins are reserved for the barometric sensor)                   
 //*************************************************************************************
-#define PIN_Voltage1 3    //  Pin for measuring Voltage 1 ( Analog In Pin! )
+#define PIN_Voltage1 8    //  Pin for measuring Voltage 1 ( Analog In Pin! )
 #define PIN_Voltage2 8    //  Pin for measuring Voltage 2 ( Analog In Pin! )
 #define PIN_Voltage3 8    //  Pin for measuring Voltage 3 ( Analog In Pin! )
 #define PIN_Voltage4 8    //  Pin for measuring Voltage 4 ( Analog In Pin! )
@@ -317,9 +317,10 @@
 #define SETUP_DATA_TO_SEND    \
                         DEFAULTFIELD , ALTIMETER , 1 , 1 , 0 ,\
                         DEFAULTFIELD , VERTICAL_SPEED , 1 , 1 ,0 , \
-                        DEFAULTFIELD , CURRENTMA , 10 , 1 , 0, \
-                        FUEL_FIRST_ID , MILLIAH, -100 , 390 , 100, \
-                        CELLS_FIRST_ID , CELLS_1_2 , 1, 1 , 0
+                        T1_FIRST_ID , ALT_OVER_10_SEC , 1 , 1,  0
+ //                       DEFAULTFIELD , CURRENTMA , 10 , 1 , 0, \
+ //                       FUEL_FIRST_ID , MILLIAH, -100 , 390 , 100, \
+ //                       CELLS_FIRST_ID , CELLS_1_2 , 1, 1 , 0
 
 
 /* Here some typical values for Hub protocol
@@ -431,7 +432,11 @@
 //    offsetCurrentSteps  =  Offset to apply for current; normal value is 1024/2 for a bidirectional sensor because 0 Amp gives VCC/2 (or 1.1 V/2 when using a divider)
 //                           Still for unidirectional sensor, voltage at 0 amp is 0.6 volt for 5 volt Vcc; so offset should then normally be 1024 * 0.6 /5 = 123 
 //    mAmpPerStep         =  milliAmp per step from Analoge to Digital Converter; the value depend on the sensitivity of the sensor (and on an eventual voltage divider)
-//                           E.g. for a sensor that provides 40 mvolt/Amp and if Vcc is 5 volt, parameter = 40 * 1024 / 5000 = 8.192 mAmpPerStep
+//                           The value is normally = V (in mvolt) / (sensitivity in mv/Amp * 1.023) where:
+//                                 V is or Vcc (e.g. 5000) or interna 1.1 ref (e.g. 1100) depending on the reference you use
+//                                 sensitivity is normally given in the datasheet from your sensor.
+//                           E.g. for a ACS758LCB-050U, sensitivity is 60 mv/Amp
+//                              So if using 5 volt Vcc => 5000 / (60 * 1.023) = 81.5 
 // Uncomment the #define PIN_CurrentSensor (see Hardware section) to enable the current sensor
 // note : those parameters are automatically discarded when PIN-CurrentSensor is not defined (= set as comment)
 //***************************************************************************************
@@ -533,7 +538,7 @@
 //           Please note that the more cells you have the more unaccurate the measurements become.
 //           Probably, it make no sense to measure more that 3 or 4 cells individually
 //*****************************************************************************
-#define NUMBEROFCELLS 1  // keep this line but set value to 0 (zero) if you do not want to transmit cell voltage.
+#define NUMBEROFCELLS 0  // keep this line but set value to 0 (zero) if you do not want to transmit cell voltage.
 
 
 //**** 6 - Set up for RPM (rotation per minute) ********************************************************************************
