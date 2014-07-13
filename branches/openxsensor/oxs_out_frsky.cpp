@@ -24,7 +24,7 @@
 //#include "oxs_config.h"    // already in .h file
 //#include "Arduino.h"       // already in .h file
 
-#include "oxs_out_FRSKY.h"
+#include "oxs_out_frsky.h"
 #include "Aserial.h"
 
 extern unsigned long micros( void ) ;
