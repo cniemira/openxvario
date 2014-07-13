@@ -15,7 +15,7 @@
 
 // Author: Mike Blandford
 
-#define DEBUGSETNEWDATA
+//#define DEBUGSETNEWDATA
 
 #include "oxs_config.h"
 #include <Arduino.h>
@@ -23,7 +23,18 @@
 #include "oxs_out_frsky.h"          // Mike , one variable is shared between both files
 
                                     // Mike, this code (delay_us) could be moved in a separate file with your function micros, millis, ...
-#define FOSC 16000000UL // internal clock of 16 mhz
+
+//#define FOSC 16000000UL // internal clock of 16 mhz
+#if F_CPU   == 20000000L  // for the 20 MHz clock on rare Arduino boards
+  #define FOSC 20000000UL 
+#elif F_CPU == 16000000L  // for the 16 MHz clock on most Arduino boards
+  #define FOSC 16000000UL 
+#elif F_CPU == 8000000L   // for the 8 MHz internal clock
+  #define FOSC 8000000UL 
+#else
+  #error Unsupported clock speed
+#endif
+
 #define delay_us(x) {unsigned char _dcnt; \
                       _dcnt = (x)/(24000000UL/FOSC)|1; \
                       while(--_dcnt !=0) continue; \
@@ -43,22 +54,76 @@ struct t_hubData *ThisData = 0 ;
 #ifdef FRSKY_SPORT
 // 57600 = Desired baudrate pour le Sport Interface = 17 micro sec per bit.
 
+
 //This section chooses the correct timer values for the chosen baudrate.
 // Assumes a 16MHz clock                                                   !! Mike, here we have code only for 16 Mhz, lower in the code,there is code for 8 mhz too. Perhaps better to unify
-#define TICKS2COUNT         278  // Ticks between two bits.
-#define TICKS2WAITONE       278  // Wait one bit period.
-#define TICKS2WAITONE_HALF  416	 // Wait one and a half bit period.
+//#define TICKS2COUNT         278  // Ticks between two bits.
+//#define TICKS2WAITONE       278  // Wait one bit period.
+//#define TICKS2WAITONE_HALF  416	 // Wait one and a half bit period.
+  #if F_CPU == 20000000L   // 20MHz clock 
+    // Sinan: Not tested                                                     
+    #define TICKS2COUNT         348  // Ticks between two bits.
+    #define TICKS2WAITONE       348  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  520    // Wait one and a half bit period.
+  #elif F_CPU == 16000000L  // 16MHz clock                                                  
+    #define TICKS2COUNT         278  // Ticks between two bits.
+    #define TICKS2WAITONE       278  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  416    // Wait one and a half bit period.
+  #elif F_CPU == 8000000L   // 8MHz clock
+    // Assumes a 8MHz clock                                                   
+    #define TICKS2COUNT         139  // Ticks between two bits.
+    #define TICKS2WAITONE       139  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  208    // Wait one and a half bit period.
+  #else
+    #error Unsupported clock speed
+  #endif
+
 #else
 // 9600   =  Desired baudrate
 //This section chooses the correct timer values for 9600 baud.
 // Assumes a 16MHz clock
-#define TICKS2COUNT         (278*6)  // Ticks between two bits.
-#define TICKS2WAITONE       (278*6)  // Wait one bit period.
-#define TICKS2WAITONE_HALF  (416*6)	 // Wait one and a half bit period.
+//#define TICKS2COUNT         (278*6)  // Ticks between two bits.
+//#define TICKS2WAITONE       (278*6)  // Wait one bit period.
+//#define TICKS2WAITONE_HALF  (416*6)	 // Wait one and a half bit period.
+  #if F_CPU == 20000000L     // 20MHz clock                                                  
+    // Sinan: Not tested
+    #define TICKS2COUNT         (348*6)  // Ticks between two bits.
+    #define TICKS2WAITONE       (348*6)  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  (520*6)    // Wait one and a half bit period.
+  #elif F_CPU == 16000000L   // 16MHz clock                                                  
+    #define TICKS2COUNT         (278*6)  // Ticks between two bits.
+    #define TICKS2WAITONE       (278*6)  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  (416*6)    // Wait one and a half bit period.
+  #elif F_CPU == 8000000L    // 8MHz clock                                                   
+    #define TICKS2COUNT         (139*6)  // Ticks between two bits.
+    #define TICKS2WAITONE       (139*6)  // Wait one bit period.
+    #define TICKS2WAITONE_HALF  (208*6)    // Wait one and a half bit period.
+  #else
+    #error Unsupported clock speed
+  #endif
+
+
 #endif
 
-#define INTERRUPT_EXEC_CYCL   90       // Cycles to execute interrupt routines from interrupt.
-#define INTERRUPT_EARLY_BIAS  32       // Cycles to allow of other interrupts.
+  #if F_CPU == 20000000L     // 20MHz clock                                                  
+    #define INTERRUPT_EXEC_CYCL   112       // Cycles to execute interrupt routines from interrupt.
+    #define INTERRUPT_EARLY_BIAS  40       // Cycles to allow of other interrupts.
+
+  #elif F_CPU == 16000000L   // 16MHz clock                                                  
+    #define INTERRUPT_EXEC_CYCL   90       // Cycles to execute interrupt routines from interrupt.
+    #define INTERRUPT_EARLY_BIAS  32       // Cycles to allow of other interrupts.
+
+  #elif F_CPU == 8000000L    // 8MHz clock                                                   
+    #define INTERRUPT_EXEC_CYCL   45       // Cycles to execute interrupt routines from interrupt.
+    #define INTERRUPT_EARLY_BIAS  16       // Cycles to allow of other interrupts.
+
+  #else
+    #error Unsupported clock speed
+  #endif
+
+
+//#define INTERRUPT_EXEC_CYCL   90       // Cycles to execute interrupt routines from interrupt.
+//#define INTERRUPT_EARLY_BIAS  32       // Cycles to allow of other interrupts.
 // INTERRUPT_EARLY_BIAS is to bias the sample point a bit early in case
 // the Timer 0 interrupt (5.5uS) delays the start bit detection
 
@@ -704,7 +769,17 @@ ISR( TIMER1_CAPT_vect, ISR_NOBLOCK )
 		uint16_t time = ICR1 ;	// Read timer 1
 		sei() ;
 		elapsed = time - lastTimerValue ;
-		eventTime = TotalMicros + ( elapsed >> 4 ) ;
+  #if F_CPU == 20000000L   // 20MHz clock 
+   #error Unsupported clock speed
+  #elif F_CPU == 16000000L  // 16MHz clock                                                  
+    		eventTime = TotalMicros + ( elapsed >> 4 ) ;
+  #elif F_CPU == 8000000L   // 8MHz clock
+  		eventTime = TotalMicros + ( elapsed >> 3 ) ;
+    #else
+    #error Unsupported clock speed
+  #endif
+
+		//eventTime = TotalMicros + ( elapsed >> 4 ) ;
 		RpmCounter = 0 ;
 		difference = eventTime - lastEventTime ;
 		lastEventTime = eventTime ;
@@ -732,7 +807,18 @@ uint32_t micros()
 	SREG = oldSREG ;
 
 	elapsed = time - lastTimerValue ;
-	elapsed >>= 4 ;
+	
+ #if F_CPU == 20000000L   // 20MHz clock 
+   #error Unsupported clock speed
+  #elif F_CPU == 16000000L  // 16MHz clock                                                  
+        elapsed >>= 4 ;
+  #elif F_CPU == 8000000L   // 8MHz clock
+        elapsed >>= 3 ;
+    #else
+    #error Unsupported clock speed
+  #endif
+
+        //elapsed >>= 4 ;
 	
 	uint32_t ltime = TotalMicros ;
 	ltime += elapsed ;
@@ -793,9 +879,30 @@ void init()
 	// 16 MHz / 128 = 125 KHz, inside the desired 50-200 KHz range.
 	// XXX: this will not work properly for other clock speeds, and
 	// this code should use F_CPU to determine the prescale factor.
-	sbi(ADCSRA, ADPS2);
-	sbi(ADCSRA, ADPS1);
-	sbi(ADCSRA, ADPS0);
+	//sbi(ADCSRA, ADPS2);
+	//sbi(ADCSRA, ADPS1);
+	//sbi(ADCSRA, ADPS0);
+  #if ( F_CPU == 20000000L ) || ( F_CPU == 16000000L )   // 20 MHz or 16 MHz clock
+        // set a2d prescale factor to 128
+        // 20 MHz / 128 = 156.25 KHz
+        // 16 MHz / 128 = 125 KHz, inside the desired 50-200 KHz range.
+        // XXX: this will not work properly for other clock speeds, and          
+        // this code should use F_CPU to determine the prescale factor.
+        sbi(ADCSRA, ADPS2);
+        sbi(ADCSRA, ADPS1);
+        sbi(ADCSRA, ADPS0);
+  #elif F_CPU == 8000000L    // 8MHz clock        
+        // set a2d prescale factor to 64
+        // 8 MHz / 64 = 125 KHz, inside the desired 50-200 KHz range.
+        sbi(ADCSRA, ADPS2);
+        sbi(ADCSRA, ADPS1);
+        cbi(ADCSRA, ADPS0);
+  #else
+    #error Unsupported clock speed
+  #endif
+  
+
+
 
 	// enable a2d conversions
 	sbi(ADCSRA, ADEN);
