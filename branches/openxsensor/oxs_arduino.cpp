@@ -103,7 +103,7 @@ void OXS_ARDUINO::voltageNrIncrease() {
       cnt++;
       if(millis() > ( lastVoltMillis + 500) ){   // calculate average only once every 500 msec 
         for (int cntVolt = 0 ; cntVolt < 6 ; cntVolt++) {      
-          if ( arduinoData.mVoltPin[cntVolt] < 7) {
+          if ( arduinoData.mVoltPin[cntVolt] < 8) {
             arduinoData.mVolt[cntVolt] = (arduinoData.sumVoltage[cntVolt] / cnt  * arduinoData.mVoltPerStep[cntVolt] ) + arduinoData.offset[cntVolt];
 //            arduinoData.mVolt[cntVolt] = (1 + cntVolt) * 3000 + cntVolt * (millis() & 0xFF)  ; // this is just to test the cell calculation ; !!!!!!!!!!!to be removed
             arduinoData.mVoltAvailable[cntVolt] = true ;
