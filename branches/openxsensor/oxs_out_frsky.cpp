@@ -1080,22 +1080,22 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 #if defined( PIN_Voltage1 ) || defined( PIN_Voltage2 ) || defined( PIN_Voltage3 ) || defined( PIN_Voltage4 ) || defined( PIN_Voltage5 ) || defined( PIN_Voltage6 ) 
       case VOLT1 :  
-         SendVoltX( 0 ) ;
+         SendVoltX( 0 , currentFieldToSend ) ;
          break ;
       case VOLT2 :  
-         SendVoltX( 1 ) ;
+         SendVoltX( 1 , currentFieldToSend ) ;
           break ;
       case VOLT3 :  
-         SendVoltX( 2 ) ;
+         SendVoltX( 2 , currentFieldToSend ) ;
           break ;
       case VOLT4 :  
-         SendVoltX( 3 ) ;
+         SendVoltX( 3 , currentFieldToSend ) ;
           break ;
       case VOLT5 :  
-         SendVoltX( 4 ) ;
+         SendVoltX( 4 , currentFieldToSend) ;
          break ;
       case VOLT6 :  
-         SendVoltX( 5 ) ;
+         SendVoltX( 5 , currentFieldToSend) ;
          break ;
       
 #endif
@@ -1178,10 +1178,10 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 }  // End function  loadValueToSend (Frame 1)
 
 
-void OXS_OUT_FRSKY::SendVoltX( uint8_t VoltToSend ) {
+void OXS_OUT_FRSKY::SendVoltX( uint8_t VoltToSend , uint8_t indexFieldToSend) {
         if ( (SwitchFrameVariant == 1) && (  arduinoData->mVoltAvailable[VoltToSend] == true )) {
            if ( fieldOk == true ) {
-             SendValue((int8_t) fieldToSend ,(int16_t) ( ( arduinoData->mVolt[VoltToSend] * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3])) + fieldContainsData[currentFieldToSend][4] );
+             SendValue((int8_t) fieldToSend ,(int16_t) ( ( arduinoData->mVolt[VoltToSend] * fieldContainsData[indexFieldToSend][2] / fieldContainsData[indexFieldToSend][3])) + fieldContainsData[indexFieldToSend][4] );
              arduinoData->mVoltAvailable[VoltToSend] = false ;
            }
          }

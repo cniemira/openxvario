@@ -103,7 +103,7 @@ class OXS_OUT_FRSKY {
     void SendCurrentMilliAmps(int32_t milliamps);
     
     void sendHubByte( uint8_t byte ) ;
-    void SendVoltX( uint8_t VoltToSend  ) ;
+    void SendVoltX( uint8_t VoltToSend  , uint8_t indexFieldToSend ) ;
 
 };
 
