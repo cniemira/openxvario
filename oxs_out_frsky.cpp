@@ -1095,7 +1095,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
          SendVoltX( 4 ) ;
          break ;
       case VOLT6 :  
-         SendVoltX( 2 ) ;
+         SendVoltX( 5 ) ;
          break ;
       
 #endif
