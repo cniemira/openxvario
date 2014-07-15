@@ -60,11 +60,12 @@ void OXS_CURRENT::readSensor() {
   milliTmp = millis() ;
   if(  milliTmp > ( lastCurrentMillis + 200) ){   // calculate average once per 200 millisec
       currentData.milliAmps = ((currentData.sumCurrent / cnt) - offsetCurrentSteps ) * mAmpPerStep ;
-      currentData.milliAmpsAvailable = true ;
+       if (currentData.milliAmps < 0) currentData.milliAmps = 0 ;
+	  currentData.milliAmpsAvailable = true ;
       if(currentData.minMilliAmps>currentData.milliAmps)currentData.minMilliAmps=currentData.milliAmps;
       if(currentData.maxMilliAmps<currentData.milliAmps)currentData.maxMilliAmps=currentData.milliAmps;
       currentData.sumCurrent = 0;
-      currentData.floatConsumedMilliAmps += currentData.milliAmps * (milliTmp - lastCurrentMillis ) / 3600.0 /1000.0 ;   // Mike , is this ok when millis() overrun????
+      currentData.floatConsumedMilliAmps += ((float) currentData.milliAmps) * (milliTmp - lastCurrentMillis ) / 3600.0 /1000.0 ;   // Mike , is this ok when millis() overrun????
       currentData.consumedMilliAmps = (int32_t) currentData.floatConsumedMilliAmps ;
       currentData.consumedMilliAmpsAvailable = true ;
       lastCurrentMillis =  milliTmp ;
