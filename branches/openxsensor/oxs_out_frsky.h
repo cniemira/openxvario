@@ -8,7 +8,7 @@
 #include "oxs_arduino.h" // we need the arduinodata struct
 
 
-#define INTERVAL_FRAME1 100
+#define INTERVAL_FRAME1 200
 #define INTERVAL_FRAME2 1000
 
 #define FRSKY_USERDATA_GPS_ALT_B    0x01
