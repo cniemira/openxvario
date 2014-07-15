@@ -636,8 +636,9 @@ void OXS_OUT_FRSKY::sendData()  // to do for Hub protocol
     SendFrame1();
 //    if (SwitchFrameVariant==0)SendFrame1A();
 //    if (SwitchFrameVariant==1)SendFrame1B();
-    SwitchFrameVariant++;
-    if(SwitchFrameVariant==2)SwitchFrameVariant=0 ;
+
+//    SwitchFrameVariant++;  // Test in order to send only 1 type of frame
+//    if(SwitchFrameVariant==2)SwitchFrameVariant=0 ;
   }
 //  second frame was never used; if activated again, then we have to take care that orginal data are already sent before filling the buffer
 //  if ( (temp-lastMsFrame2) > INTERVAL_FRAME2  ) {
@@ -1136,7 +1137,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 #if (NUMBEROFCELLS > 0)
       case  CELLS_1_2 :
-          if ( (SwitchFrameVariant == 1) && ( arduinoData->mVoltCell_1_2_Available ) ) {
+          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_1_2_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_1_2 ) ;
                  arduinoData->mVoltCell_1_2_Available  = false ;
@@ -1145,7 +1146,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
           break ;
           
       case  CELLS_3_4 :
-          if ( (SwitchFrameVariant == 1) && ( arduinoData->mVoltCell_3_4_Available ) ) {
+          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_3_4_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_3_4 ) ;
                  arduinoData->mVoltCell_3_4_Available  = false ;
@@ -1154,7 +1155,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
           break ;
           
       case  CELLS_5_6 :
-          if ( (SwitchFrameVariant == 1) && ( arduinoData->mVoltCell_5_6_Available ) ) {
+          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_5_6_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_5_6 ) ;
                  arduinoData->mVoltCell_5_6_Available  = false ;
@@ -1179,7 +1180,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 
 void OXS_OUT_FRSKY::SendVoltX( uint8_t VoltToSend , uint8_t indexFieldToSend) {
-        if ( (SwitchFrameVariant == 1) && (  arduinoData->mVoltAvailable[VoltToSend] == true )) {
+        if ( (SwitchFrameVariant == 0) && (  arduinoData->mVoltAvailable[VoltToSend] == true )) {
            if ( fieldOk == true ) {
              SendValue((int8_t) fieldToSend ,(int16_t) ( ( arduinoData->mVolt[VoltToSend] * fieldContainsData[indexFieldToSend][2] / fieldContainsData[indexFieldToSend][3])) + fieldContainsData[indexFieldToSend][4] );
              arduinoData->mVoltAvailable[VoltToSend] = false ;
