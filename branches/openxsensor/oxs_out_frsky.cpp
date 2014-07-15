@@ -882,12 +882,12 @@ void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
   sendHubByte(ID);
 
   if ( (tmp1 == 0x5E) || (tmp1 == 0x5D) ){ 
-	tmp1 ^= 0x20 ;
+	tmp1 ^= 0x60 ;
         sendHubByte(0x5D);
   }
   sendHubByte(tmp1);  
   if ( (tmp2 == 0x5E) || (tmp2 == 0x5D) ){ 
-	tmp2 ^= 0x20 ;
+	tmp2 ^= 0x60 ;
         sendHubByte(0x5D);
   }
   sendHubByte(tmp2);
