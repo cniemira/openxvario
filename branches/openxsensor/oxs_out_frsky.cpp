@@ -647,7 +647,7 @@ void OXS_OUT_FRSKY::sendData()  // to do for Hub protocol
 //  }
 }  // end sendData Hub protocol
 
-//======================================================================================================Send Frame 1A via serial
+//======================================================================================================Generate the Frame in a buffer
 void OXS_OUT_FRSKY::SendFrame1(){
 #ifdef DEBUGHUBPROTOCOL
   printer->print("FRSky output module: SendFrame1A:");
@@ -675,203 +675,6 @@ void OXS_OUT_FRSKY::SendFrame1(){
 }
 
  
-
-/*
-  if (varioData!=NULL){
-    if (varioData->available){ //========================================================================== Vario Data
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("Sending vario data ");
-#endif
-      SendAlt(varioData->absoluteAlt);    
-
-      // Attempt to work around the annoying 10cm double beep
-      //SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
-      if (varioData->climbRate==10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)9); // ClimbRate in open9x Vario mode
-      else if (varioData->climbRate==-10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)-9);
-      else SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
-
-        // ********************************* The Temp 1 FIeld
-#ifdef SEND_TEMP_T1      
-      SendTemperature1(varioData->temperature/10); 
-#endif
-
-#ifdef SEND_PressureAsT1 // pressure in T1 Field
-      SendTemperature1((varioData->pressure-SEND_PressureAsT1)/10); //pressure in T1 Field
-#endif
-
-      // ********************************* The Temp 2 FIeld
-#ifdef SEND_TEMP_T2      
-      SendTemperature2(varioData->temperature); 
-#endif
-#ifdef SEND_SensitivityAsT2 // Kalman Param R in Temp2
-      SendTemperature2(uint16_t(varioData->sensitivity)); 
-#endif
-#ifdef SEND_PressureAsT2 // pressure in T2 Field
-      SendTemperature2((varioData->pressure) /10 -SEND_PressureAsT2); //pressure in T2 Field reduced by offset
-#endif
-    }
-    else {
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("No vario data Available!");
-#endif
-    }// if (varioData->available){ 
-  } //(varioData==NULL)
-  if (currentData!=NULL){
-    if (varioData->available){ //========================================================================== Current Data
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("Sending current data:");      
-      printer->println(currentData->milliAmps);
-#endif
-      SendCurrentMilliAmps(currentData->milliAmps);    
-#ifdef SEND_MilliampsAsT1      
-      SendTemperature1(currentData->milliAmps); 
-#endif
-#ifdef SEND_MilliampsAsT2      
-      SendTemperature2(currentData->milliAmps); 
-#endif
-    } // if (currentData->available)
-  } // if(currentData==NULL)
-  // =====================================================================================================  Arduino Data
-  if (arduinoData->available)
-  {
-#ifdef PIN_VOLTAGE_DIVIDER
-    SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)arduinoData->dividerMilliVolts/100); 
-#else
-    SendValue(FRSKY_USERDATA_VFAS_NEW,(int16_t)arduinoData->vrefMilliVolts/100); 
-#endif
-#ifdef SEND_LoopTimeAsT2      
-    SendTemperature2(arduinoData->loopTimeMilliSeconds); 
-#endif
-
-
-
-  }
-  sendHubByte(0x5E) ; // End of Frame 1!
-  setNewData( &MyData ) ;
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("Data to send = ");
-      for (int cntPrint = 0 ; cntPrint < MyData.maxData ; cntPrint++) {
-        printer->print(" ");
-        printer->print(MyData.data[cntPrint] , HEX);
-      }
-     printer->println(" "); 
-#endif
-  
-}
-//============================================================================================================== Send Frame 1B via serial
-void OXS_OUT_FRSKY::SendFrame1B(){
-#ifdef DEBUGHUBPROTOCOL
-  printer->print("FRSky output module: SendFrame1B:");
-#endif
-  MyData.maxData = 0 ; // reset of number of data to send
-  if (varioData!=NULL){
-    if (varioData->available){ //========================================================================== Vario Data
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("Sending vario data B ");
-#endif
-      // ********************************* The DIST Field
-#ifdef SEND_AltAsDIST     // send alt as adjusted to precision in dist field
-      if (varioData->absoluteAlt- SEND_AltAsDIST <= 32768) SendGPSDist(uint16_t(varioData->absoluteAlt- SEND_AltAsDIST ));
-      else if (varioData->absoluteAlt- SEND_AltAsDIST < 327680) SendGPSDist(uint16_t((varioData->absoluteAlt-SEND_AltAsDIST)/(long)10));
-      // If altitude gets higher than 327,68m alt/10 will be transmitted till 3276,8m then alt/100
-      else SendGPSDist(uint16_t((varioData->absoluteAlt-SEND_AltAsDIST)/(long)100));
-#endif 
-#ifdef SEND_PressureAsDIST
-      SendGPSDist(uint16_t(varioData->pressure/10));
-#endif
-#ifdef SEND_SensitivityAsDist
-      SendGPSDist(uint16_t(varioData->paramKalman_r));
-#endif
-
-      // ********************************** The Fuel Field
-#ifdef SEND_SensitivityAsFuel
-      SendFuel(uint16_t(varioData->paramKalman_r));
-#endif
-#ifdef SEND_PressureAsFuel
-      SendFuel(uint16_t(varioData->pressure/100));
-#endif
-      // ********************************* The RPM Field   
-#ifdef SEND_AltAsRPM     
-      SendRPM(varioData->absoluteAlt);
-#endif
-#ifdef SEND_PressureAsRPM
-      SendRPM(uint16_t(varioData->pressure/10));
-#endif
-#ifdef SEND_SensitivityAsRPM
-      SendRPM(uint16_t(varioData->paramKalman_r));
-#endif
-#ifdef MEASURE_RPM
-      SendRPM( Rpm ) ;
-#endif
-
-      //******************************************* Min Max Alt
-#ifdef SEND_MIN_MAX_ALT
-      SendValue(0x31,int16_t(varioData->minRelAlt/100));   //minAltitude OK!
-      SendValue(0x32,int16_t(varioData->maxRelAlt/100));   //maxAltitude OK!
-      //SendValue(0x33,uint16_t(5678));    //maxRPM OK
-      // SendValue(0x34,uint16_t(111));   //T1+ OK
-      // SendValue(0x35,int16_t(222));    //T2+ OK!
-      // SendValue(0x36,int16_t(1000));    //maxGpsSpeed; id ok, but 1000= 1840?? 
-      // SendValue(0x37,int16_t(7000));    //Dst+ OK!
-      // SendValue(0x39,int16_t(5000));    //FAS OK, documented!
-#endif
-    }
-    else {
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("No vario data Available!");
-#endif
-    }// if (varioData->available){ 
-  } //(varioData==NULL)
-  if (currentData!=NULL){
-    if (varioData->available){ //========================================================================== Current Data
-#ifdef SEND_mAhAsDist
-      SendGPSDist(uint16_t(currentData->consumedMilliAmps));
-#endif
-#ifdef SEND_mAhAsFuel
-      SendFuel(uint16_t(currentData->consumedMilliAmps));
-#endif
-#ifdef SEND_mAhPercentageAsFuel
-      SendFuel( uint16_t(  constrain(map(currentData->consumedMilliAmps,SEND_mAhPercentageAsFuel,0,0,100) ,0,100  ) ) );
-#endif
-#ifdef SEND_MAX_CURRENT
-      SendValue(0x38,int16_t(currentData->maxMilliAmps));    //Cur+ OK!
-#endif
-    } // if (currentData->available)
-  } // if(currentData==NULL)
-#ifdef SEND_VRefAsFuel
-  SendFuel( uint16_t(arduinoData->vrefMilliVolts) );
-#endif
-#ifdef SEND_DividerMilliVoltsAsFuel
-  SendFuel( uint16_t(arduinoData->dividerMilliVolts) );
-#endif
-#ifdef SEND_VRefAsDist
-  SendGPSDist( uint16_t(arduinoData->vrefMilliVolts) );
-#endif
-#ifdef SEND_DividerVoltageAsDist
-  SendGPSDist( uint16_t(arduinoData->mVolt[0]) );   // to do : change the 0 by a value that user can define in config.h
-#endif
-  sendHubByte(0x5E) ; // End of Frame 1!
-  setNewData( &MyData ) ;
-#ifdef DEBUGHUBPROTOCOL
-      printer->print("Data to send = ");
-      for (int cntPrint = 0 ; cntPrint < MyData.maxData ; cntPrint++) {
-        printer->print(" ");
-        printer->print(MyData.data[cntPrint] , HEX);
-      }
-     printer->println(" "); 
-#endif
-}
-*/
-
-/*
-// Send Frame 2 via serial
-void OXS_OUT_FRSKY::SendFrame2(){
-#ifdef DEBUGHUBPROTOCOL
-  printer->print("FRSky Output Module: SendFrame2!");
-  printer->println(" ");    
-#endif
-}
-*/
 
 /**********************************************************/
 /* SendValue => send a value as frsky sensor hub data     */
@@ -901,6 +704,8 @@ void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
 void OXS_OUT_FRSKY::SendCellVoltage( uint32_t voltage) {
   static byte cellID ;
     static uint16_t cellVolt;
+  // For SPORT, cell voltage is formatted as (hex) 12 34 56 78 where 123 = volt of cell n+1 (divided by 2), 456 idem for cell n, 7 = max number of cell and 8 = n (number of cell)
+  // target format for Hub (hex) is having 2 data sent in format : 84 56 and 91 23 (where 9 = content of 8 incresed by 1)
   cellID = (voltage & 0x0000000f);
   cellVolt = (voltage & 0x000fff00) ;
   uint8_t v1 = (cellVolt & 0x0f00)>>8 | (cellID<<4 & 0xf0);
@@ -971,32 +776,7 @@ void OXS_OUT_FRSKY::SendAlt(long altcm)
   SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
   SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
 }
-/****************************************************************/
-/* SendGPSAlt - send the a value to the GPS altitude field      */
-/* parameter: altitude in cm between -3276800 and 3276799       */
-/* cm will not be displayed                                     */
-/****************************************************************/
-void OXS_OUT_FRSKY::SendGPSAlt(long altcm)
-{
-  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
-  long Meter;
-  if (altcm >0){
-    Meter = (altcm-(long)Centimeter);
-  }
-  else{
-    Meter = -1*(abs(altcm)+(long)Centimeter);
-  }
-  Meter=Meter/100;
 
-  // need to send a gps fix before openTX displays this field....
-  SendValue(FRSKY_USERDATA_GPS_LONG_A, 1);
-  SendValue(FRSKY_USERDATA_GPS_LONG_B, 1);
-  SendValue(FRSKY_USERDATA_GPS_LAT_A, 1);
-  SendValue(FRSKY_USERDATA_GPS_LAT_B, 1);
-  // now send the data
-  SendValue(FRSKY_USERDATA_GPS_ALT_B, Meter);
-  SendValue(FRSKY_USERDATA_GPS_ALT_A, Centimeter);
-}
 /***********************************************/
 /* SendCurrentMilliAmps => Send Current        */
 /* current will be transmitted as 1/10th of A  */
@@ -1017,8 +797,8 @@ void OXS_OUT_FRSKY::sendHubByte( uint8_t byte )
 }
 
 //*************************************
-// Load the value to transmit in a temp field that will be transmitted when start bit will be recieved
-// flag this value as "UNKNOWN" (Unknown)
+// Put the value to transmit in a buffer
+// Note : in hub protocol there is no check if a data is already (re)calculated or not.
 //************************************
 void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 //  static int16_t valueTemp ;
@@ -1032,48 +812,48 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 #ifdef VARIO       
       case  ALTIMETER :    
-          if ( (SwitchFrameVariant == 0) && (varioData->absoluteAltAvailable) ) { //========================================================================== Vario Data
+//          if ( (SwitchFrameVariant == 0) && (varioData->absoluteAltAvailable) ) { //========================================================================== Vario Data
               if (fieldToSend == DEFAULTFIELD) {
                 SendAlt(varioData->absoluteAlt);           
-                varioData->absoluteAltAvailable = false ;
+//                varioData->absoluteAltAvailable = false ;
               }
               else if(  fieldOk == true ) {
                  SendValue((int8_t) fieldToSend ,(int16_t) ( (varioData->absoluteAlt * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3])) + fieldContainsData[currentFieldToSend][4] );
-                 varioData->absoluteAltAvailable = false ;
+//                 varioData->absoluteAltAvailable = false ;
               }   
-          }
+//          }
           break ;
       case VERTICAL_SPEED : 
-          if ( (SwitchFrameVariant == 0) && (varioData->climbRateAvailable) ){
+//          if ( (SwitchFrameVariant == 0) && (varioData->climbRateAvailable) ){
               if (fieldToSend == DEFAULTFIELD) {
                  // Attempt to work around the annoying 10cm double beep
                 //SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
                 if (varioData->climbRate==10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)9); // ClimbRate in open9x Vario mode
                 else if (varioData->climbRate==-10) SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)-9);
                 else SendValue(FRSKY_USERDATA_VERT_SPEED,(int16_t)varioData->climbRate); // ClimbRate in open9x Vario mode
-                varioData->climbRateAvailable = false ;
+//                varioData->climbRateAvailable = false ;
               }
               else if(  fieldOk == true ) {
                  SendValue((int8_t) fieldToSend ,(int16_t) ( (varioData->climbRate * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3]))+ fieldContainsData[currentFieldToSend][4] );
-                 varioData->climbRateAvailable = false ;
+//                 varioData->climbRateAvailable = false ;
               }  
-          }   
+//          }   
           break ;
        case SENSITIVITY :
-          if ( (SwitchFrameVariant == 0) && (varioData->sensitivityAvailable ) ){
+//          if ( (SwitchFrameVariant == 0) && (varioData->sensitivityAvailable ) ){
              if ( fieldOk == true ) {
                SendValue((int8_t) fieldToSend ,(int16_t) ( (varioData->sensitivity * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3]))+ fieldContainsData[currentFieldToSend][4] );
-               varioData->sensitivityAvailable = false ;
+//               varioData->sensitivityAvailable = false ;
              }
-          }   
+//          }   
           break ;
        case ALT_OVER_10_SEC :
-          if ( (SwitchFrameVariant == 0) && (varioData->vSpeed10SecAvailable ) ){
+//          if ( (SwitchFrameVariant == 0) && (varioData->vSpeed10SecAvailable ) ){
              if ( fieldOk == true ) {
                SendValue((int8_t) fieldToSend ,(int16_t) ( (varioData->vSpeed10SecAvailable * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3]) ) + fieldContainsData[currentFieldToSend][4] );
-               varioData->vSpeed10SecAvailable = false ;
+//               varioData->vSpeed10SecAvailable = false ;
              }
-          }   
+//          }   
           break ;
           
           
@@ -1103,75 +883,75 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 #if defined (PIN_CurrentSensor)
       case CURRENTMA :
-          if ( (SwitchFrameVariant == 0) && (currentData->milliAmpsAvailable ) ) {
+//          if ( (SwitchFrameVariant == 0) && (currentData->milliAmpsAvailable ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCurrentMilliAmps(currentData->milliAmps);
-                 currentData->milliAmpsAvailable = false ;
+//                 currentData->milliAmpsAvailable = false ;
              }
               else if(  fieldOk == true ) {
                  SendValue((int8_t) fieldToSend ,(int16_t) ( (currentData->milliAmps * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3]) ) + fieldContainsData[currentFieldToSend][4] );
-                 currentData->milliAmpsAvailable = false ;
+//                 currentData->milliAmpsAvailable = false ;
               }  
-          }    
+//          }    
          break ;
       case MILLIAH :
-          if ( (SwitchFrameVariant == 0) && (currentData->consumedMilliAmpsAvailable) ){
+//          if ( (SwitchFrameVariant == 0) && (currentData->consumedMilliAmpsAvailable) ){
                 if(  fieldOk == true ) {
                    SendValue((int8_t) fieldToSend ,(int16_t) ( (currentData->consumedMilliAmps * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3])) + fieldContainsData[currentFieldToSend][4] );
-                   currentData->consumedMilliAmpsAvailable = false ;  
+//                   currentData->consumedMilliAmpsAvailable = false ;  
               }  
-           }
+//           }
          break ;
       case FRSKY_USERDATA_CURRENT_MAX :
-          if ( (SwitchFrameVariant == 0)  ) {
+//          if ( (SwitchFrameVariant == 0)  ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendValue(0x38,int16_t(currentData->maxMilliAmps));    //Cur+ OK!
              }
              else if(  fieldOk == true ) {
                  SendValue((int8_t) fieldToSend ,(int16_t) ( (currentData->maxMilliAmps * fieldContainsData[currentFieldToSend][2] / fieldContainsData[currentFieldToSend][3]) ) + fieldContainsData[currentFieldToSend][4] );
              }  
-          }    
+//          }    
          break ;
 #endif  // End PIN_CurrentSensor
 
 
 #if (NUMBEROFCELLS > 0)
       case  CELLS_1_2 :
-          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_1_2_Available ) ) {
+//          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_1_2_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_1_2 ) ;
-                 arduinoData->mVoltCell_1_2_Available  = false ;
+//                 arduinoData->mVoltCell_1_2_Available  = false ;
              }
-          }    
+//          }    
           break ;
           
       case  CELLS_3_4 :
-          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_3_4_Available ) ) {
+//          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_3_4_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_3_4 ) ;
-                 arduinoData->mVoltCell_3_4_Available  = false ;
+//                 arduinoData->mVoltCell_3_4_Available  = false ;
              }
-          }   
+//          }   
           break ;
           
       case  CELLS_5_6 :
-          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_5_6_Available ) ) {
+//          if ( (SwitchFrameVariant == 0) && ( arduinoData->mVoltCell_5_6_Available ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                  SendCellVoltage( arduinoData->mVoltCell_5_6 ) ;
                  arduinoData->mVoltCell_5_6_Available  = false ;
              }
-          }   
+//          }   
           break ;
 
 #endif  // NUMBEROFCELLS > 0         
 
 #ifdef MEASURE_RPM
       case  RPM :
-          if ( (SwitchFrameVariant == 0) && ( RpmAvailable  ) ) {
+//          if ( (SwitchFrameVariant == 0) && ( RpmAvailable  ) ) {
              if ( fieldToSend == DEFAULTFIELD ) {
                   SendValue(FRSKY_USERDATA_RPM, Rpm);
              }
-          }
+//          }
           break ;
 #endif  //  MEASURE_RPM
 
@@ -1180,12 +960,12 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend ) {
 
 
 void OXS_OUT_FRSKY::SendVoltX( uint8_t VoltToSend , uint8_t indexFieldToSend) {
-        if ( (SwitchFrameVariant == 0) && (  arduinoData->mVoltAvailable[VoltToSend] == true )) {
+//        if ( (SwitchFrameVariant == 0) && (  arduinoData->mVoltAvailable[VoltToSend] == true )) {
            if ( fieldOk == true ) {
              SendValue((int8_t) fieldToSend ,(int16_t) ( ( arduinoData->mVolt[VoltToSend] * fieldContainsData[indexFieldToSend][2] / fieldContainsData[indexFieldToSend][3])) + fieldContainsData[indexFieldToSend][4] );
-             arduinoData->mVoltAvailable[VoltToSend] = false ;
+//             arduinoData->mVoltAvailable[VoltToSend] = false ;
            }
-         }
+//         }
 }
 
 #endif // End of FRSKY_SPORT
