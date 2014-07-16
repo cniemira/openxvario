@@ -613,7 +613,7 @@ void OXS_OUT_FRSKY::loadValueToSend( uint8_t currentFieldToSend) {
 #endif
 }  // End function
 
-#else // not FRSKY_SPORT
+#else // not FRSKY_SPORT ==============================================Hub Protocol ================================================
 
   static int fieldToSend ;
   static bool fieldOk ;
@@ -626,7 +626,7 @@ void OXS_OUT_FRSKY::sendData()  // to do for Hub protocol
   static uint32_t temp ;
 
   temp = millis() ;
-  if ( (temp-lastMsFrame1) > INTERVAL_FRAME1  ) {
+  if ( (temp-lastMsFrame1) >= INTERVAL_FRAME1  ) {
 #ifdef DEBUGHUBPROTOCOL
      printer->print("Send Data at = ");
      printer->println( millis() );
@@ -701,25 +701,28 @@ void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
 /**********************************************************/
 /* SendCellVoltage => send a cell voltage                 */
 /**********************************************************/
+/**********************************************************/
+/* SendCellVoltage => send a cell voltage                 */
+/**********************************************************/
 void OXS_OUT_FRSKY::SendCellVoltage( uint32_t voltage) {
   static byte cellID ;
     static uint16_t cellVolt;
   // For SPORT, cell voltage is formatted as (hex) 12 34 56 78 where 123 = volt of cell n+1 (divided by 2), 456 idem for cell n, 7 = max number of cell and 8 = n (number of cell)
   // target format for Hub (hex) is having 2 data sent in format : 84 56 and 91 23 (where 9 = content of 8 incresed by 1)
-  cellID = (voltage & 0x0000000f);
-  cellVolt = (voltage & 0x000fff00) ;
-  uint8_t v1 = (cellVolt & 0x0f00)>>8 | (cellID<<4 & 0xf0);
-  uint8_t v2 = (cellVolt & 0x00ff);
-  uint16_t Value = (v1 & 0x00ff) | (v2<<8);
-  SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
-  cellID++;
-  if (cellID < NUMBEROFCELLS) {
-    cellVolt = (voltage & 0xfff00000) ;
-    uint8_t v1 = (cellVolt & 0x0f00)>>8 | (cellID<<4 & 0xf0);
+    cellID = (voltage & 0x0000000f);
+    cellVolt = ((voltage >> 8) & 0x0fff) ;
+    uint8_t v1 = ( (cellID + 1 )<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
     uint8_t v2 = (cellVolt & 0x00ff);
-    uint16_t Value = (v1 & 0x00ff) | (v2<<8);
+    uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
     SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
-  }  
+    cellID++;
+    if (cellID < NUMBEROFCELLS) {
+        cellVolt = (voltage & 0xfff00000) >> 20 ;
+        uint8_t v1 = ( (cellID + 1)<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
+        uint8_t v2 = (cellVolt & 0x00ff);
+        uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
+        SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
+    }  
 }
 
 /**********************************/
