@@ -30,11 +30,13 @@ extern uint8_t SportSync ;
 
 extern volatile uint8_t sendStatus ;
 
-#else // Hub protocol
+#else // Hub protocol ================================
+
+#define maxSizeBuffer 70  // max size of the buffer used to store the data to be sent in the hub protocol
 
 struct t_hubData
 {
-	uint8_t data[30] ; 
+	uint8_t data[maxSizeBuffer] ; 
 	uint8_t currentData ; //index of current data
 	uint8_t maxData ;   // max number of data prepared to be send
 } ;
