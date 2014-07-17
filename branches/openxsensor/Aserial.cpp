@@ -207,7 +207,7 @@ void setNewData( struct t_sportData *pdata, uint16_t id, uint32_t value )
 #else  // Hub protocol
 
 volatile uint8_t TxCount ;
-volatile uint8_t TxData[30] ;
+volatile uint8_t TxData[maxSizeBuffer] ;
 volatile uint8_t TxMax ;
 
 //volatile uint8_t ByteToSend ;

@@ -647,7 +647,9 @@ void OXS_OUT_FRSKY::sendData()  // to do for Hub protocol
 //  }
 }  // end sendData Hub protocol
 
-//======================================================================================================Generate the Frame in a buffer
+//***********************************************************************************
+//  SendFrame1 => generate the frame in a buffer and call Aserial (setNewData) it may be send     *
+//***********************************************************************************
 void OXS_OUT_FRSKY::SendFrame1(){
 #ifdef DEBUGHUBPROTOCOL
   printer->print("FRSky output module: SendFrame1A:");
@@ -657,7 +659,9 @@ void OXS_OUT_FRSKY::SendFrame1(){
    SendValue(FRSKY_USERDATA_TEMP1,(int16_t)1234); // Fix value in T1 ; only for test purpose
 #endif
   for (int rowNr = 0 ; rowNr < numberOfFields ; rowNr++) {
-      loadValueToSend( rowNr ) ;    
+    if ( MyData.maxData < (maxSizeBuffer - 13) ){
+        loadValueToSend( rowNr ) ;    
+    }    
   }    
   if( MyData.maxData > 0 ) {
     sendHubByte(0x5E) ; // End of Frame 1!
@@ -697,101 +701,6 @@ void OXS_OUT_FRSKY::SendValue(uint8_t ID, uint16_t Value) {
   sendHubByte(tmp2);
 }
 
-
-/**********************************************************/
-/* SendCellVoltage => send a cell voltage                 */
-/**********************************************************/
-/**********************************************************/
-/* SendCellVoltage => send a cell voltage                 */
-/**********************************************************/
-void OXS_OUT_FRSKY::SendCellVoltage( uint32_t voltage) {
-  static byte cellID ;
-    static uint16_t cellVolt;
-  // For SPORT, cell voltage is formatted as (hex) 12 34 56 78 where 123 = volt of cell n+1 (divided by 2), 456 idem for cell n, 7 = max number of cell and 8 = n (number of cell)
-  // target format for Hub (hex) is having 2 data sent in format : 84 56 and 91 23 (where 9 = content of 8 incresed by 1)
-    cellID = (voltage & 0x0000000f);
-    cellVolt = ((voltage >> 8) & 0x0fff) ;
-    uint8_t v1 = ( (cellID + 1 )<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
-    uint8_t v2 = (cellVolt & 0x00ff);
-    uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
-    SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
-    cellID++;
-    if (cellID < NUMBEROFCELLS) {
-        cellVolt = (voltage & 0xfff00000) >> 20 ;
-        uint8_t v1 = ( (cellID + 1)<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
-        uint8_t v2 = (cellVolt & 0x00ff);
-        uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
-        SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
-    }  
-}
-
-/**********************************/
-/* SendGPSDist => send 0..32768   */
-/**********************************/
-void OXS_OUT_FRSKY::SendGPSDist(uint16_t dist) {// ==> Field "Dist" in open9x
-  SendValue(0x3C,uint16_t(dist)); //>> DIST
-}
-
-/************************************************************/
-/* SendTemperature1/2 =>  tempc in 1/100th of degree celsius */
-/* Display Range in openTX: -3276,8..32768=-3276,8C..+3276,C */
-/************************************************************/
-void OXS_OUT_FRSKY::SendTemperature1(int16_t tempc) {
-  SendValue(FRSKY_USERDATA_TEMP1, tempc);
-}
-void OXS_OUT_FRSKY::SendTemperature2(int16_t tempc) {
-  SendValue(FRSKY_USERDATA_TEMP2, tempc);
-}
-/*************************************/
-/* SendRPM => Send Rounds Per Minute */
-/*************************************/
-//void OXS_OUT_FRSKY::SendRPM(uint16_t rpm) {
-//  byte blades=2;
-//  rpm = uint16_t((float)rpm/(60/blades));  
-//  SendValue(FRSKY_USERDATA_RPM, rpm);
-//}
-
-/*************************************/
-/* SendFuel => SendFuel Level        */
-/*************************************/
-void OXS_OUT_FRSKY::SendFuel(uint16_t fuel) {
-  SendValue(FRSKY_USERDATA_FUEL, fuel);
-}
-
-/**********************************/
-/* SendAlt => Send ALtitude in cm */
-/**********************************/
-void OXS_OUT_FRSKY::SendAlt(long altcm)
-{
-  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
-  long Meter;
-#if defined(FORCE_ABSOLUTE_ALT) && !defined(FRSKY_SPORT)
-  altcm-=1;
-#endif
-
-  if (altcm >0){
-    Meter = (altcm-(long)Centimeter);
-  }
-  else{
-    Meter = -1*(abs(altcm)+(long)Centimeter);
-  }
-  Meter=Meter/100;
-  SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
-  SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
-}
-
-/***********************************************/
-/* SendCurrentMilliAmps => Send Current        */
-/* current will be transmitted as 1/10th of A  */
-/* Range: -32768..32767 => disp -327,6..3276,7 */
-/***********************************************/
-void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps) 
-{
-#ifdef ForceAbsolutCurrent
-  milliamps=abs(milliamps);
-#endif 
-  SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
-}
 
 void OXS_OUT_FRSKY::sendHubByte( uint8_t byte )
 {	
@@ -970,6 +879,103 @@ void OXS_OUT_FRSKY::SendVoltX( uint8_t VoltToSend , uint8_t indexFieldToSend) {
            }
 //         }
 }
+
+/**********************************************************/
+/* SendCellVoltage => send a cell voltage                 */
+/**********************************************************/
+/**********************************************************/
+/* SendCellVoltage => send a cell voltage                 */
+/**********************************************************/
+void OXS_OUT_FRSKY::SendCellVoltage( uint32_t voltage) {
+  static byte cellID ;
+    static uint16_t cellVolt;
+  // For SPORT, cell voltage is formatted as (hex) 12 34 56 78 where 123 = volt of cell n+1 (divided by 2), 456 idem for cell n, 7 = max number of cell and 8 = n (number of cell)
+  // target format for Hub (hex) is having 2 data sent in format : 84 56 and 91 23 (where 9 = content of 8 incresed by 1)
+    cellID = (voltage & 0x0000000f);
+    cellVolt = ((voltage >> 8) & 0x0fff) ;
+    uint8_t v1 = ( (cellID  )<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
+    uint8_t v2 = (cellVolt & 0x00ff);
+    uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
+    SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
+    cellID++;
+    if (cellID < NUMBEROFCELLS) {
+        cellVolt = (voltage & 0xfff00000) >> 20 ;
+        uint8_t v1 = ( (cellID )<<4 & 0xf0) | ((cellVolt & 0x0f00)>>8) ;
+        uint8_t v2 = (cellVolt & 0x00ff);
+        uint16_t Value = (v2<<8) | (v1 & 0x00ff) ;
+        SendValue(FRSKY_USERDATA_CELL_VOLT, Value);
+    }  
+}
+
+/**********************************/
+/* SendGPSDist => send 0..32768   */
+/**********************************/
+void OXS_OUT_FRSKY::SendGPSDist(uint16_t dist) {// ==> Field "Dist" in open9x
+  SendValue(0x3C,uint16_t(dist)); //>> DIST
+}
+
+/************************************************************/
+/* SendTemperature1/2 =>  tempc in 1/100th of degree celsius */
+/* Display Range in openTX: -3276,8..32768=-3276,8C..+3276,C */
+/************************************************************/
+void OXS_OUT_FRSKY::SendTemperature1(int16_t tempc) {
+  SendValue(FRSKY_USERDATA_TEMP1, tempc);
+}
+void OXS_OUT_FRSKY::SendTemperature2(int16_t tempc) {
+  SendValue(FRSKY_USERDATA_TEMP2, tempc);
+}
+/*************************************/
+/* SendRPM => Send Rounds Per Minute */
+/*************************************/
+//void OXS_OUT_FRSKY::SendRPM(uint16_t rpm) {
+//  byte blades=2;
+//  rpm = uint16_t((float)rpm/(60/blades));  
+//  SendValue(FRSKY_USERDATA_RPM, rpm);
+//}
+
+/*************************************/
+/* SendFuel => SendFuel Level        */
+/*************************************/
+void OXS_OUT_FRSKY::SendFuel(uint16_t fuel) {
+  SendValue(FRSKY_USERDATA_FUEL, fuel);
+}
+
+/**********************************/
+/* SendAlt => Send ALtitude in cm */
+/**********************************/
+void OXS_OUT_FRSKY::SendAlt(long altcm)
+{
+  uint16_t Centimeter =  uint16_t(abs(altcm)%100);
+  long Meter;
+#if defined(FORCE_ABSOLUTE_ALT) && !defined(FRSKY_SPORT)
+  altcm-=1;
+#endif
+
+  if (altcm >0){
+    Meter = (altcm-(long)Centimeter);
+  }
+  else{
+    Meter = -1*(abs(altcm)+(long)Centimeter);
+  }
+  Meter=Meter/100;
+  SendValue(FRSKY_USERDATA_BARO_ALT_B, (int16_t)Meter);
+  SendValue(FRSKY_USERDATA_BARO_ALT_A, Centimeter);
+}
+
+/***********************************************/
+/* SendCurrentMilliAmps => Send Current        */
+/* current will be transmitted as 1/10th of A  */
+/* Range: -32768..32767 => disp -327,6..3276,7 */
+/***********************************************/
+void OXS_OUT_FRSKY::SendCurrentMilliAmps(int32_t milliamps) 
+{
+#ifdef ForceAbsolutCurrent
+  milliamps=abs(milliamps);
+#endif 
+  SendValue(FRSKY_USERDATA_CURRENT, (uint16_t)(milliamps/100));
+}
+
+
 
 #endif // End of FRSKY_SPORT
 
